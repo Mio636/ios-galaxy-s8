@@ -134,9 +134,18 @@ injection — no boot, no boot image rebuild, no flash and no phone action:
   `otool -L` confirmed Mach-O arm64, both install names under `/redwood/lib`,
   and the dependency from `libhakios.gl.dylib` to
   `/redwood/lib/libOSMesa.8.dylib`.
-- Merged `main` is `68b4c4f`. Actions run `45801897781`
-  ("Merge branch 'gpu-bringup'") was queued at 10:30 UTC while the injection
-  below was done; no kernel result is available yet.
+- Merged `main` is `68b4c4f`. Its Actions run `45801897781` and two follow-up
+  `xnu.yml` runs (`45806395357`, `45838089374`) all failed. The latest,
+  `45838089374` on `macos-15-intel`, compiled the whole kernel with zero errors
+  from `0124` and `0125` and failed only at the final link: six duplicate
+  symbols (`gMaliClients`, `gMaliSubmits`, `gMaliBuffers`, `gMaliShown`,
+  `gMaliMade`, `gMaliFailed`) were defined in both
+  `bsd/dev/hakios.mali.c` and `iokit/Kernel/hakios.mali.cpp`.
+- Fix: `tools/gpu-bringup/kernel/hakios.mali.cpp` now declares those counters
+  and `gMaliMade[]` as `extern` inside its `extern "C"` block; the single
+  definitions remain in `bsd/dev/hakios.mali.c`. `0126` was regenerated from
+  the corrected sources. In a fresh replay tree, `0124`, `0125` and `0126`
+  all pass `git apply --check` and apply cleanly.
 - Root image injection (2026-11-26): after `modprobe hfsplus`,
   `ios16-root.img` was mounted and `tools/gpu-bringup/install-to-root.sh`
   installed `libOSMesa.8.dylib` and `libhakios.gl.dylib` into `/redwood/lib`
@@ -159,10 +168,10 @@ No boot, boot image rebuild, flash or phone action has been performed.
 
 ## Next
 
-1. Wait for Actions run `45801897781` and download its kernel; first boot
-   target: loader log + XNU entry marker, then the early XNU console on the S8
-   screen. The root image now has the GLES userland staged but nothing boots it
-   until an explicit authorized trial.
+1. Wait for the new Actions run triggered by this link fix and download its
+   kernel; first boot target: loader log + XNU entry marker, then the early XNU
+   console on the S8 screen. The root image now has the GLES userland staged but
+   nothing boots it until an explicit authorized trial.
 2. UFS driver for the root filesystem (USERDATA), then the iPhone X root.
 3. On an explicitly authorised trial only: staged `mali=1/3/4` checks before
    any reset or job, then `mali=9` with `DRIVERS=softpipe` before Panfrost.

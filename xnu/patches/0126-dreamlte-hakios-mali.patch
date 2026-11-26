@@ -1077,10 +1077,10 @@ index e70a4ce..6fae212 100644
  }
 diff --git a/iokit/Kernel/hakios.mali.cpp b/iokit/Kernel/hakios.mali.cpp
 new file mode 100644
-index 0000000..fb53bdf
+index 0000000..0621f84
 --- /dev/null
 +++ b/iokit/Kernel/hakios.mali.cpp
-@@ -0,0 +1,429 @@
+@@ -0,0 +1,430 @@
 +/*
 + * HakiosMali IOKit service and panfrost-compatible user client for the
 + * Galaxy S8 (Mali-G71). Adapted from /home/mio/s9-ref/core/drivers/gpu/
@@ -1116,9 +1116,10 @@ index 0000000..fb53bdf
 +void FlushPoC_DcacheRegion(vm_offset_t va, size_t length);
 +void HakiosMaliStart(void);   /* called by bsd/dev/hakios.mali.c: C linkage matters */
 +
-+uint32_t gMaliClients, gMaliBuffers, gMaliSubmits, gMaliFailed, gMaliShown;
++/* Defined once in bsd/dev/hakios.mali.c; this client only reads/updates them. */
++extern uint32_t gMaliClients, gMaliBuffers, gMaliSubmits, gMaliFailed, gMaliShown;
 +struct mali_made { uint64_t address, size; uint32_t asked, flags; };
-+struct mali_made gMaliMade[32];
++extern struct mali_made gMaliMade[32];
 +}
 +
 +/* Linux's include/uapi/drm/panfrost_drm.h and drm.h request numbers. */

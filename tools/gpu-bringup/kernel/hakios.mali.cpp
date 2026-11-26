@@ -33,9 +33,10 @@ bool hakios_mali_wait(uint64_t seq, uint64_t timeout_ns);
 void FlushPoC_DcacheRegion(vm_offset_t va, size_t length);
 void HakiosMaliStart(void);   /* called by bsd/dev/hakios.mali.c: C linkage matters */
 
-uint32_t gMaliClients, gMaliBuffers, gMaliSubmits, gMaliFailed, gMaliShown;
+/* Defined once in bsd/dev/hakios.mali.c; this client only reads/updates them. */
+extern uint32_t gMaliClients, gMaliBuffers, gMaliSubmits, gMaliFailed, gMaliShown;
 struct mali_made { uint64_t address, size; uint32_t asked, flags; };
-struct mali_made gMaliMade[32];
+extern struct mali_made gMaliMade[32];
 }
 
 /* Linux's include/uapi/drm/panfrost_drm.h and drm.h request numbers. */
