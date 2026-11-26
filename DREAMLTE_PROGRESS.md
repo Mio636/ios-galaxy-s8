@@ -34,6 +34,13 @@ the bare-metal `s8-probe` (v2–v7) booted from BOOT:
   `tools/dreamlte/apply-dreamlte.py`): S8 framebuffer/marker/boot-MPIDR macros
   in `A5XELTE.h`, used by the early console, the AppleCLCD bridge and SweetCPU;
   A5 GPIO keys off by default. The MACHINE_CONFIG stays `A5XELTE`.
+- `0124` now also does the Mongoose M2 (logical 4-7, MPIDR 0-3) cluster0 power
+  sequence measured by `shim/dreamlte/smp_probe.c`: CPU_QCH and CLKSTOP with
+  status waits, DD4, the CPU sequencer option, then per-core DDn and the PMU
+  `0 -> 0xF` edge around PSCI CPU_ON. It also fixes the stale `#if defined(SWEET)`
+  context in `0125`. In a fresh replay tree, `0124`, `0125` and `0126` all pass
+  plain `git apply --check`. This is a patch/build result: `cpus=8` has not yet
+  been booted with this sequence.
 - Several A5 patches were zero-context, had a stray `xnu/` prefix or wrong hunk
   counts, so `git apply` (the CI path) skipped them. They were regenerated with
   context from a locally replayed tree (`tools/dreamlte/prep-xnu-tree.sh`,

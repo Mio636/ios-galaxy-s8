@@ -753,10 +753,21 @@ index 9969739..0535b28 100644
  	poll();
  	if (fReal) {
 diff --git iokit/Kernel/arm/SweetCPU.cpp iokit/Kernel/arm/SweetCPU.cpp
-index 55d0057..5bd24a7 100644
+index 55d0057..1abbb75 100644
 --- a/iokit/Kernel/arm/SweetCPU.cpp
 +++ b/iokit/Kernel/arm/SweetCPU.cpp
-@@ -17,6 +17,9 @@
+@@ -1,7 +1,9 @@
+ /*
+  * Shared IOCPU bring-up from the SWEET donor. A5XELTE currently selects
+  * all eight Cortex-A53 cores in two Exynos7580 clusters via PSCI.
+- * GICv2 SGI routing is board-specific; suspend remains disabled.
++ * On DREAMLTE the upper four are Mongoose M2 cores; their cluster0 power
++ * must be enabled before PSCI CPU_ON. GICv2 SGI routing is board-specific;
++ * suspend remains disabled.
+  */
+ #include <pexpert/arm64/board_config.h>
+ 
+@@ -17,6 +19,9 @@
  #include <kern/thread.h>
  #include <mach/mach_time.h>
  #include <pexpert/pexpert.h>
@@ -766,7 +777,7 @@ index 55d0057..5bd24a7 100644
  
  extern "C" void sweet_secondary_entry(void);
  extern "C" boolean_t sweet_cpu_signal_is_enabled(unsigned int cpu);
-@@ -84,8 +87,15 @@ SweetCPU::start(IOService *provider)
+@@ -84,8 +89,15 @@ SweetCPU::start(IOService *provider)
  #if defined(A5XELTE)
  	/* Linux's Exynos7580 DT: logical 0..3 = MPIDR 0..3;
  	 * logical 4..7 = MPIDR 0x100..0x103. */
@@ -782,7 +793,19 @@ index 55d0057..5bd24a7 100644
  	if (cpu->phys_id != expected_mpidr ||
  	    topology->num_cpus > SWEET_SMP_MAX_CPUS) {
  		panic(CPU_PORT_NAME " CPU: unsupported topology cpu=%u mpidr=0x%x count=%u",
-@@ -168,9 +178,9 @@ SweetCPU::startAll(void *arg __unused, wait_result_t result __unused)
+@@ -102,7 +114,10 @@ SweetCPU::start(IOService *provider)
+ 	if (!IOCPU::start(provider)) {
+ 		return false;
+ 	}
+-#if defined(A5XELTE)
++#if defined(DREAMLTE)
++	cpuName = OSSymbol::withCStringNoCopy(getCPUNumber() >= 4 ?
++	    "Exynos M2" : "Cortex-A53");
++#elif defined(A5XELTE)
+ 	cpuName = OSSymbol::withCStringNoCopy("Cortex-A53");
+ #else
+ 	cpuName = OSSymbol::withCStringNoCopy("Kryo 470");
+@@ -168,9 +183,9 @@ SweetCPU::startAll(void *arg __unused, wait_result_t result __unused)
  		}
  		IOSleep(1);
  	}
@@ -795,7 +818,7 @@ index 55d0057..5bd24a7 100644
  	}
  	for (unsigned int i = 0; i < topology->num_cpus; i++) {
  		SweetCPU *cpu = __atomic_load_n(&sweet_cpus[i], __ATOMIC_ACQUIRE);
-@@ -279,13 +289,62 @@ SweetCPU::startCPU(vm_offset_t start_paddr, vm_offset_t arg_paddr)
+@@ -279,13 +294,134 @@ SweetCPU::startCPU(vm_offset_t start_paddr, vm_offset_t arg_paddr)
  {
  	const ml_topology_cpu_t *cpu = &ml_get_topology_info()->cpus[getCPUNumber()];
  	/* cpu_start() passes NULL,NULL: x20/x21 are set by LowResetVectorBase. */
@@ -833,15 +856,82 @@ index 55d0057..5bd24a7 100644
 +		if (pmu == 0) {
 +			pmu = ml_io_map(0x16480000, 0x10000);
 +		}
++		if (pmu == 0) {
++			IOLog(CPU_PORT_NAME " CPU: cpu=%u cannot map PMU\n",
++			    getCPUNumber());
++			return KERN_FAILURE;
++		}
 +		uint32_t off = 0x2000 + (uint32_t)(((((cpu->phys_id >> 8) & 0xf) << 2) |
 +		    (cpu->phys_id & 0xf)) * 0x80);
 +		volatile uint32_t *cfg = (volatile uint32_t *)(pmu + off);
 +		/*
-+		 * The sequence that started a core in the loader probe: PSCI
++		 * The sequence that started an A53 in the loader probe: PSCI
 +		 * CPU_ON, then a PMU power-up (LOCAL_PWR_CFG 0 -> 0xF), then CPU_ON
-+		 * again (below). Boot 20 skipped the 0 -> 0xF edge (cfg was left
-+		 * at 0xF) and the core never came alive, so power it down first.
++		 * again (below). Boot 20 skipped the 0 -> 0xF edge and the core
++		 * never came alive, so power it down first.
 +		 */
++		bool mongoose = (cpu->phys_id & ~0x3u) == 0;   /* MPIDR 0..3, cluster0 */
++		volatile uint32_t *dd = NULL;
++		if (mongoose) {
++			/*
++			 * cluster0_on from Samsung's cal-if/exynos8895 header, as used
++			 * by shim/dreamlte/smp_probe.c: enable the CPU QCH and clock
++			 * stop domains, wait for both statuses, assert DD4 and let the
++			 * CPU sequencer run again. It is a one-time cluster sequence,
++			 * not a PLL/ACPM/PMIC change, and reads back every wait.
++			 */
++			static vm_offset_t dd_base;
++			static bool cluster_ready;
++			if (dd_base == 0) {
++				dd_base = ml_io_map(0x16840000, 0x2000);
++			}
++			if (pmu == 0 || dd_base == 0) {
++				IOLog(CPU_PORT_NAME " CPU: cpu=%u cannot map PMU/DD for Mongoose\n",
++				    getCPUNumber());
++				return KERN_FAILURE;
++			}
++			dd = (volatile uint32_t *)(dd_base +
++			    (cpu->phys_id & 0xfu) * 0x400);   /* DDn */
++			if (!cluster_ready) {
++				volatile uint32_t *qch = (volatile uint32_t *)(pmu + 0x3c20);
++				volatile uint32_t *qch_stat = (volatile uint32_t *)(pmu + 0x3c24);
++				volatile uint32_t *clkstop = (volatile uint32_t *)(pmu + 0x45c0);
++				volatile uint32_t *clk_stat = (volatile uint32_t *)(pmu + 0x45c4);
++				volatile uint32_t *seqopt = (volatile uint32_t *)(pmu + 0x2488);
++				volatile uint32_t *dd4 = (volatile uint32_t *)(dd_base + 4 * 0x400);
++				IOLog(CPU_PORT_NAME " CPU: cpu=%u Mongoose cluster0 as found: "
++				    "seq=0x%x opt=0x%x qch=0x%x clk=0x%x dd4=0x%x\n",
++				    getCPUNumber(), *(volatile uint32_t *)(pmu + 0x2484),
++				    *seqopt, *qch_stat, *clk_stat, *dd4);
++				*qch |= 1u;
++				for (int i = 0; i < 5000 && (*qch_stat & 1u) == 0; i++) {
++					IODelay(10);
++				}
++				if ((*qch_stat & 1u) == 0) {
++					IOLog(CPU_PORT_NAME " CPU: cpu=%u Mongoose QCH status stuck at 0x%x\n",
++					    getCPUNumber(), *qch_stat);
++				}
++				*clkstop |= 1u;
++				for (int i = 0; i < 5000 && (*clk_stat & 1u) == 0; i++) {
++					IODelay(10);
++				}
++				if ((*clk_stat & 1u) == 0) {
++					IOLog(CPU_PORT_NAME " CPU: cpu=%u Mongoose CLKSTOP status stuck at 0x%x\n",
++					    getCPUNumber(), *clk_stat);
++				}
++				*dd4 |= 1u;
++				*seqopt &= ~1u;
++				__builtin_arm_dsb(DSB_SY);
++				cluster_ready = true;
++				IOLog(CPU_PORT_NAME " CPU: cpu=%u Mongoose cluster0 on: "
++				    "seq=0x%x opt=0x%x qch=0x%x clk=0x%x dd4=0x%x\n",
++				    getCPUNumber(), *(volatile uint32_t *)(pmu + 0x2484),
++				    *seqopt, *qch_stat, *clk_stat, *dd4);
++			}
++		}
++		if (mongoose) {
++			*dd &= ~1u;                     /* cpu00_on: DDn reset */
++		}
 +		cfg[0] &= ~0xfu;
 +		for (int i = 0; i < 10000 && (cfg[1] & 0xf) != 0; i++) {
 +			IODelay(1);
@@ -852,8 +942,13 @@ index 55d0057..5bd24a7 100644
 +		for (int i = 0; i < 10000 && (cfg[1] & 0xf) != 0xf; i++) {
 +			IODelay(1);
 +		}
-+		IOLog(CPU_PORT_NAME " CPU: cpu=%u first CPU_ON rc=%d, PMU power-up cfg=0x%x status=0x%x\n",
-+		    getCPUNumber(), rc0, cfg[0], cfg[1]);
++		if (mongoose) {
++			*dd |= 1u;                  /* cpu00_on: DDn release */
++		}
++		__builtin_arm_dsb(DSB_SY);
++		IOLog(CPU_PORT_NAME " CPU: cpu=%u %s first CPU_ON rc=%d, PMU cfg=0x%x status=0x%x%s\n",
++		    getCPUNumber(), mongoose ? "Mongoose" : "A53", rc0, cfg[0], cfg[1],
++		    mongoose ? " (DD released)" : "");
 +	}
 +#endif
  	__builtin_arm_dsb(DSB_SY);
