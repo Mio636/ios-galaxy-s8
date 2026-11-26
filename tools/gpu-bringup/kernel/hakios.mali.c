@@ -72,7 +72,7 @@ extern void HakiosMaliStart(void);
 #define DIV_CLK_G3D_BUSP        0x1804
 
 #define MALI_PHYS               0x13900000UL
-#define MALI_SIZE               0x5000
+#define MALI_SIZE               0x10000
 #define MALI_G71                0x60a0u          /* GPU_ID >> 16 of 0x60a00001 */
 #define SHADER_PRESENT_S8       0x17771777u      /* 20 shader cores, branch boot 36 */
 

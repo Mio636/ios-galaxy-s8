@@ -253,15 +253,25 @@ index 06bb568..5cb1360 100644
  	assert((temp_ptov_table[ptov_index - 1].va + temp_ptov_table[ptov_index - 1].len) <= physmap_end);
  
  	// Sort in descending order of segment length.  LUT traversal is linear, so largest (most likely used)
-@@ -1884,8 +1903,9 @@ arm_vm_init(uint64_t memory_size, boot_args * args)
+@@ -1884,8 +1903,18 @@ arm_vm_init(uint64_t memory_size, boot_args * args)
  	 * in units of the hardware page size and should not need similar treatment.
  	 */
  	gPhysSize = mem_size = ((gPhysBase + args->memSize) & ~PAGE_MASK) - gPhysBase;
-+	mem_size = hakios_ram_boot_memory_size(args, memory_size);
++	uint64_t hakios_managed_bytes = hakios_ram_boot_memory_size(args, memory_size);
++	if (hakios_managed_ram.count > 1) {
++		/*
++		 * Compact TTBR1 VA must be sized by the primary physmap span, not the
++		 * sum of all sparse banks. Extra banks are mapped into the physmap
++		 * aperture and added to avail pages separately; inflating mem_size or
++		 * static_memory_end here overflows the 64GB non-ARM_LARGE_MEMORY VA.
++		 */
++		mem_actual = hakios_managed_bytes;
++	} else {
++		mem_actual = args->memSizeActual ? args->memSizeActual : mem_size;
++	}
  
 -	mem_actual = args->memSizeActual ? args->memSizeActual : mem_size;
-+	mem_actual = hakios_managed_ram.count > 1 ? mem_size : (args->memSizeActual ? args->memSizeActual : mem_size);
- 
+-
  	if ((memory_size != 0) && (mem_size > memory_size)) {
  		mem_size = memory_size;
 @@ -1898,7 +1918,7 @@ arm_vm_init(uint64_t memory_size, boot_args * args)
@@ -286,8 +296,9 @@ index 06bb568..5cb1360 100644
 -	physmap_end = physmap_base + real_phys_size + ARM64_PHYSMAP_ALIGNMENT_PADDING;
 +	physmap_end = physmap_base + real_phys_size + hakios_ram_extra_bytes() + ARM64_PHYSMAP_ALIGNMENT_PADDING;
  #else
- 	static_memory_end = physmap_base + mem_size + ARM64_PHYSMAP_ALIGNMENT_PADDING; // worst possible case for block alignment
+-	static_memory_end = physmap_base + mem_size + ARM64_PHYSMAP_ALIGNMENT_PADDING; // worst possible case for block alignment
 -	physmap_end = physmap_base + real_phys_size + ARM64_PHYSMAP_ALIGNMENT_PADDING;
++	static_memory_end = physmap_base + real_phys_size + hakios_ram_extra_bytes() + ARM64_PHYSMAP_ALIGNMENT_PADDING;
 +	physmap_end = physmap_base + real_phys_size + hakios_ram_extra_bytes() + ARM64_PHYSMAP_ALIGNMENT_PADDING;
  #endif // ARM_LARGE_MEMORY
  #endif

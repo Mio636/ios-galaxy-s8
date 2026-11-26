@@ -849,7 +849,7 @@ index 55d0057..1abbb75 100644
 +		t[2] = (uint32_t)entry;
 +		t[3] = (uint32_t)((uint64_t)entry >> 32);
 +		__builtin_arm_dsb(DSB_SY);
-+		IOLog(CPU_PORT_NAME " CPU: cpu=%u entry 0x%llx via low trampoline 0x%llx\n",
++		kprintf(CPU_PORT_NAME " CPU: cpu=%u entry 0x%llx via low trampoline 0x%llx\n",
 +		    getCPUNumber(), (uint64_t)entry, tramp_pa);
 +		entry = (vm_offset_t)tramp_pa;
 +		static vm_offset_t pmu;
@@ -857,7 +857,7 @@ index 55d0057..1abbb75 100644
 +			pmu = ml_io_map(0x16480000, 0x10000);
 +		}
 +		if (pmu == 0) {
-+			IOLog(CPU_PORT_NAME " CPU: cpu=%u cannot map PMU\n",
++			kprintf(CPU_PORT_NAME " CPU: cpu=%u cannot map PMU\n",
 +			    getCPUNumber());
 +			return KERN_FAILURE;
 +		}
@@ -886,7 +886,7 @@ index 55d0057..1abbb75 100644
 +				dd_base = ml_io_map(0x16840000, 0x2000);
 +			}
 +			if (pmu == 0 || dd_base == 0) {
-+				IOLog(CPU_PORT_NAME " CPU: cpu=%u cannot map PMU/DD for Mongoose\n",
++				kprintf(CPU_PORT_NAME " CPU: cpu=%u cannot map PMU/DD for Mongoose\n",
 +				    getCPUNumber());
 +				return KERN_FAILURE;
 +			}
@@ -899,7 +899,7 @@ index 55d0057..1abbb75 100644
 +				volatile uint32_t *clk_stat = (volatile uint32_t *)(pmu + 0x45c4);
 +				volatile uint32_t *seqopt = (volatile uint32_t *)(pmu + 0x2488);
 +				volatile uint32_t *dd4 = (volatile uint32_t *)(dd_base + 4 * 0x400);
-+				IOLog(CPU_PORT_NAME " CPU: cpu=%u Mongoose cluster0 as found: "
++				kprintf(CPU_PORT_NAME " CPU: cpu=%u Mongoose cluster0 as found: "
 +				    "seq=0x%x opt=0x%x qch=0x%x clk=0x%x dd4=0x%x\n",
 +				    getCPUNumber(), *(volatile uint32_t *)(pmu + 0x2484),
 +				    *seqopt, *qch_stat, *clk_stat, *dd4);
@@ -908,7 +908,7 @@ index 55d0057..1abbb75 100644
 +					IODelay(10);
 +				}
 +				if ((*qch_stat & 1u) == 0) {
-+					IOLog(CPU_PORT_NAME " CPU: cpu=%u Mongoose QCH status stuck at 0x%x\n",
++					kprintf(CPU_PORT_NAME " CPU: cpu=%u Mongoose QCH status stuck at 0x%x\n",
 +					    getCPUNumber(), *qch_stat);
 +				}
 +				*clkstop |= 1u;
@@ -916,14 +916,14 @@ index 55d0057..1abbb75 100644
 +					IODelay(10);
 +				}
 +				if ((*clk_stat & 1u) == 0) {
-+					IOLog(CPU_PORT_NAME " CPU: cpu=%u Mongoose CLKSTOP status stuck at 0x%x\n",
++					kprintf(CPU_PORT_NAME " CPU: cpu=%u Mongoose CLKSTOP status stuck at 0x%x\n",
 +					    getCPUNumber(), *clk_stat);
 +				}
 +				*dd4 |= 1u;
 +				*seqopt &= ~1u;
 +				__builtin_arm_dsb(DSB_SY);
 +				cluster_ready = true;
-+				IOLog(CPU_PORT_NAME " CPU: cpu=%u Mongoose cluster0 on: "
++				kprintf(CPU_PORT_NAME " CPU: cpu=%u Mongoose cluster0 on: "
 +				    "seq=0x%x opt=0x%x qch=0x%x clk=0x%x dd4=0x%x\n",
 +				    getCPUNumber(), *(volatile uint32_t *)(pmu + 0x2484),
 +				    *seqopt, *qch_stat, *clk_stat, *dd4);
@@ -946,7 +946,7 @@ index 55d0057..1abbb75 100644
 +			*dd |= 1u;                  /* cpu00_on: DDn release */
 +		}
 +		__builtin_arm_dsb(DSB_SY);
-+		IOLog(CPU_PORT_NAME " CPU: cpu=%u %s first CPU_ON rc=%d, PMU cfg=0x%x status=0x%x%s\n",
++		kprintf(CPU_PORT_NAME " CPU: cpu=%u %s first CPU_ON rc=%d, PMU cfg=0x%x status=0x%x%s\n",
 +		    getCPUNumber(), mongoose ? "Mongoose" : "A53", rc0, cfg[0], cfg[1],
 +		    mongoose ? " (DD released)" : "");
 +	}

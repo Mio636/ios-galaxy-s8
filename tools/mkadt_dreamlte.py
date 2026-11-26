@@ -61,7 +61,7 @@ TIMEBASE = 26000000
 # Verified on the zealous-planck S8 branch (boots 36-49). Present for future
 # drivers only: bsd/dev/hakios.mali.c reads these addresses directly and stays
 # inert unless boot-arg mali=N is given.
-GPU_PHYS, GPU_SIZE = 0x13900000, 0x5000
+GPU_PHYS, GPU_SIZE = 0x13900000, 0x10000
 CMU_G3D_PHYS, CMU_G3D_SIZE = 0x13800000, 0x3000
 PMU_G3D_PHYS, PMU_G3D_SIZE = 0x16480000, 0x5000
 
