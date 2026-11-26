@@ -229,10 +229,14 @@ index 06bb568..5cb1360 100644
  
 +
 +	/* Compact virtual aperture; never map the physical holes between banks. */
-+	for (uint32_t i = 1; i < hakios_managed_ram.count; ++i) {
-+		const struct hakios_ram_bank *bank = &hakios_managed_ram.bank[i];
-+		vm_map_address_t synthetic_va = gVirtBase + (bank->base - gPhysBase);
-+		arm_vm_physmap_slide(temp_ptov_table, synthetic_va, bank->pages << PAGE_SHIFT, AP_RWNA, 0);
++	{
++		vm_map_address_t extra_va = gVirtBase + real_phys_size;
++		for (uint32_t i = 1; i < hakios_managed_ram.count; ++i) {
++			const struct hakios_ram_bank *bank = &hakios_managed_ram.bank[i];
++			vm_map_address_t bank_size = (vm_map_address_t)bank->pages << PAGE_SHIFT;
++			arm_vm_physmap_slide(temp_ptov_table, extra_va, bank_size, AP_RWNA, 0);
++			extra_va += bank_size;
++		}
 +	}
 +
  	assert((temp_ptov_table[ptov_index - 1].va + temp_ptov_table[ptov_index - 1].len) <= physmap_end);
@@ -244,10 +248,14 @@ index 06bb568..5cb1360 100644
  
 +
 +	/* Compact virtual aperture; never map the physical holes between banks. */
-+	for (uint32_t i = 1; i < hakios_managed_ram.count; ++i) {
-+		const struct hakios_ram_bank *bank = &hakios_managed_ram.bank[i];
-+		vm_map_address_t synthetic_va = gVirtBase + (bank->base - gPhysBase);
-+		arm_vm_physmap_slide(temp_ptov_table, synthetic_va, bank->pages << PAGE_SHIFT, AP_RWNA, 0);
++	{
++		vm_map_address_t extra_va = gVirtBase + real_phys_size;
++		for (uint32_t i = 1; i < hakios_managed_ram.count; ++i) {
++			const struct hakios_ram_bank *bank = &hakios_managed_ram.bank[i];
++			vm_map_address_t bank_size = (vm_map_address_t)bank->pages << PAGE_SHIFT;
++			arm_vm_physmap_slide(temp_ptov_table, extra_va, bank_size, AP_RWNA, 0);
++			extra_va += bank_size;
++		}
 +	}
 +
  	assert((temp_ptov_table[ptov_index - 1].va + temp_ptov_table[ptov_index - 1].len) <= physmap_end);
