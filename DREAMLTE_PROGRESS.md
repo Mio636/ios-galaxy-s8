@@ -111,8 +111,8 @@ and not re-verified during this preparation:
 
 ## GPU/GLES preparation on `gpu-bringup` (2026-11-26)
 
-Build and file preparation only — no kernel build on Actions, no boot, no
-image write and no phone action:
+Build/file preparation, a queued Actions build, and a local root-image
+injection — no boot, no boot image rebuild, no flash and no phone action:
 
 - `xnu/patches/0126-dreamlte-hakios-mali.patch` adds an opt-in `mali=N`
   driver and `HakiosMali` service, default off, with no PMIC/ACPM write.
@@ -134,14 +134,35 @@ image write and no phone action:
   `otool -L` confirmed Mach-O arm64, both install names under `/redwood/lib`,
   and the dependency from `libhakios.gl.dylib` to
   `/redwood/lib/libOSMesa.8.dylib`.
+- Merged `main` is `68b4c4f`. Actions run `45801897781`
+  ("Merge branch 'gpu-bringup'") was queued at 10:30 UTC while the injection
+  below was done; no kernel result is available yet.
+- Root image injection (2026-11-26): after `modprobe hfsplus`,
+  `ios16-root.img` was mounted and `tools/gpu-bringup/install-to-root.sh`
+  installed `libOSMesa.8.dylib` and `libhakios.gl.dylib` into `/redwood/lib`
+  plus `gl_test` into `/redwood/bin`. `libhakios.gl.dylib` is the EAGL hook
+  library; this tree has no separate dyld/inject-hook binary, and no dyld-cache
+  patch was attempted because the S9 injection addresses are for iOS 16.5
+  `20F66`, not the S8's 16.7.16 `20H392` (see `tools/gpu-bringup/docs/README.md`).
+- The image was unmounted, then `fsck.hfsplus -f -y` finished with
+  `The volume iOSRoot appears to be OK.` and `fsck.hfsplus -q` reports clean.
+  A full read-only `fsck.hfsplus -f -n` still prints
+  `Volume header needs minor repair` on this journaled HFS+ image under the
+  Linux hfsplus tools; treat that as a journal/tool quirk, not a verified
+  corruption.
+- `tools/dreamlte/chunk-manifest.py` regenerated `ios16-root.json`: 512 chunks
+  of 32 MiB, 374 with data. Compared with the previous manifest, only chunks
+  `0, 22, 215, 240, 373` changed, so those are the only USERDATA chunks a
+  later authorized flash would need to send.
 
-This is still build and file preparation only: no XNU CI build, no boot, no
-root injection, no boot image rebuild, no flash and no phone action.
+No boot, boot image rebuild, flash or phone action has been performed.
 
 ## Next
 
-1. CI kernel build; first boot target: loader log + XNU entry marker, then the
-   early XNU console on the S8 screen.
+1. Wait for Actions run `45801897781` and download its kernel; first boot
+   target: loader log + XNU entry marker, then the early XNU console on the S8
+   screen. The root image now has the GLES userland staged but nothing boots it
+   until an explicit authorized trial.
 2. UFS driver for the root filesystem (USERDATA), then the iPhone X root.
 3. On an explicitly authorised trial only: staged `mali=1/3/4` checks before
    any reset or job, then `mali=9` with `DRIVERS=softpipe` before Panfrost.
