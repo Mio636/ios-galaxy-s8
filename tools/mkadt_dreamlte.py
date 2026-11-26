@@ -85,9 +85,18 @@ def cpu_node(logical):
     a53 = logical < 4
     mpidr = 0x100 + logical if a53 else logical - 4
     cluster = 0 if a53 else 1
+    # SweetCPU's kernel personality matches only 'arm,cortex-a53' on the
+    # A5XELTE/DREAMLTE board.  Keep the descriptive Mongoose compatible for
+    # userspace, but advertise the A53 string on every core so IOKit creates
+    # a SweetCPU nub for logical CPUs 4-7 too.
+    if a53:
+        compatible = mkadt.cstr('arm,cortex-a53')
+    else:
+        compatible = (mkadt.cstr('samsung,mongoose-m2') +
+                      mkadt.cstr('arm,cortex-a53'))
     return [
         ('device_type', mkadt.cstr('cpu')),
-        ('compatible', mkadt.cstr('arm,cortex-a53' if a53 else 'samsung,mongoose-m2') +
+        ('compatible', compatible +
          mkadt.cstr('ARM,v8')),
         ('reg', mkadt.u32(mpidr)),
         ('cpu-id', mkadt.u32(logical)),

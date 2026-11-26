@@ -445,6 +445,11 @@ edit('iokit/KernelConfigTables.cpp', [
      "    \"     'IONameMatch'     = ('samsung,a5xelte-display', 'samsung,dreamlte-display');\"\n", 1),
     ("    \"     'IONameMatch'     = 'samsung,a5xelte';\"\n",
      "    \"     'IONameMatch'     = ('samsung,a5xelte', 'samsung,dreamlte');\"\n", 1),
+    # SweetCPU is the only CPU driver personality on this board.  Match the
+    # Mongoose compatible string too, so ADT nodes that describe logical
+    # CPUs 4-7 still get a SweetCPU nub.
+    ("    \"     'IONameMatch'     = 'arm,cortex-a53';\"\n",
+     "    \"     'IONameMatch'     = ('arm,cortex-a53', 'samsung,mongoose-m2');\"\n", 1),
 ])
 
 # A5 touch probe maps Exynos7580 I2C/GPIO blocks: a bus error on the S8.
