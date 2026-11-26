@@ -5,6 +5,9 @@ Starts from the donor schema like tools/mkadt_a5xelte.py and replaces the
 board facts with the S8's (live DT and /proc/iomem read from TWRP):
   - XNU RAM: the 2 GiB bank 0x880000000-0x8ffffffff, free of firmware
     carve-outs (the low banks hold ramoops, sec_debug, modem, abox, TIMA, fb)
+  - ram_banks=1: /chosen/hakios-ram-banks also offers reservation-filtered
+    ranges from both low banks and the rest of the high bank; dram-base and
+    dram-size remain the primary 512 MiB bootstrap window
   - GIC-400: GICD 0x10201000, GICC 0x10202000; virtual timer PPI 11 = INTID 27
   - timer 26 MHz (S-Boot leaves CNTFRQ_EL0 = 0; XNU reads this property)
   - CPUs: logical 0-3 = Cortex-A53 MPIDR 0x100-0x103 (S-Boot boots 0x100),
@@ -24,6 +27,31 @@ DRAM_BASE = 0x880000000
 # 512 MiB, the A5XELTE-proven size: with the whole 2 GiB bank the first S8
 # boot panicked in kmem_range_init (kernel VA claims in the 39-bit 4K layout).
 DRAM_SIZE = 0x20000000
+
+# Extra banks for XNU's opt-in sparse-RAM path (boot arg ram_banks=1). The
+# first pair must equal dram-base/dram-size: it is still boot_args' single
+# contiguous bootstrap window. All other pairs are the union of stock DTB
+# memory nodes minus reserved-memory, the 0xe0000000 memreserve, initrd, the
+# framebuffer and the loader's ramoops/marker ranges. ~3.37 GiB managed in
+# total; no physical hole is claimed as pages.
+RAM_BANKS = (
+    (0x880000000, 0x20000000),  # primary bootstrap window, 512 MiB
+    (0x882000000, 0x60000000),  # high bank remainder, 1536 MiB
+
+    (0x80000000, 0x00002000),   # low bank head, 8 KiB
+    (0x80004000, 0x01ffc000),   # low bank, ~32 MiB
+    (0x82100000, 0x0ff80000),   # low bank, 255 MiB
+    (0x92100000, 0x00080000),   # ramoops gap, 512 KiB
+    (0x92200000, 0x1ee00000),   # low bank, 494 MiB
+    (0xb1200000, 0x0b600000),   # low bank tail, 182 MiB
+
+    (0xc0010000, 0x003f0000),   # second bank head, ~4 MiB
+    (0xce800000, 0x01800000),   # second bank, 24 MiB
+    (0xd1400000, 0x0ec00000),   # second bank, 236 MiB
+    (0xe1900000, 0x02300000),   # second bank, 35 MiB
+    (0xeac00000, 0x08800000),   # second bank tail, 136 MiB
+)
+
 FB_PHYS, FB_W, FB_H = 0xcc000000, 1440, 2960
 TIMEBASE = 26000000
 
@@ -80,6 +108,8 @@ def build(canvas=(FB_W, FB_H)):
     chosen = child(root, 'chosen')
     set_prop(chosen, 'dram-base', mkadt.u64(DRAM_BASE))
     set_prop(chosen, 'dram-size', mkadt.u64(DRAM_SIZE))
+    set_prop(chosen, 'hakios-ram-banks',
+             b''.join(mkadt.u64(base, size) for base, size in RAM_BANKS))
     set_prop(chosen, 'firmware-version', mkadt.cstr('dreamlte-entry'))
     set_prop(chosen, 'system-firmware-version', mkadt.cstr('dreamlte-entry'))
     cpus = child(root, 'cpus')
