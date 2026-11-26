@@ -53,14 +53,14 @@ extern void HakiosMaliStart(void);
 
 /* ---- the S8's addresses (verified on the branch, not guessed) ---- */
 #define PMU_PHYS                0x16480000UL
-#define PMU_SIZE                0x5000
+#define PMU_SIZE                0x10000
 #define PMU_G3D_CONFIGURATION   0x40e0
 #define PMU_G3D_STATUS          0x40e4
 #define G3D_ON                  0xfu
 #define G3D_WAIT_US             100000u
 
 #define CMU_G3D_PHYS            0x13800000UL
-#define CMU_G3D_SIZE            0x3000
+#define CMU_G3D_SIZE            0x10000
 #define PLL_CON0                0x140
 #define PLL_CON2                0x148
 #define PLL_ENABLE              (1u << 31)
