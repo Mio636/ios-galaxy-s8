@@ -90,8 +90,37 @@ to the pmsg zone and read from TWRP as `/sys/fs/pstore/pmsg-ramoops-0`.
   SwapBegin never completed. **Boot 19 (`sweetfb_native=1`, 1440x2960): iOS
   lock screen on the Galaxy S8**, one CPU, CPU rendering, ~15 min to reach it.
 
+## GPU evidence inherited from `origin/claude/zealous-planck-oi3hse`
+
+These are records from that branch's boots, **not** a boot of `gpu-bringup`
+and not re-verified during this preparation:
+
+- Boot 36: `GPU_ID=0x60a00001`, `SHADER_PRESENT=0x17771777`; GPU at
+  `0x13900000`, CMU_G3D at `0x13800000`, PMU G3D config/status `0x40e0/0x40e4`.
+- Boots 37/38: a polled `WRITE_VALUE` job (`0xcafebabe`) and a draw worked;
+  boot 46 worked through the user path; boot 49 showed CoreAnimation running
+  on the Mali device but skipping its draws.
+- No GPU GIC SPI was found; that path used register polling.
+
+## GPU/GLES preparation on `gpu-bringup` (2026-11-26)
+
+Build and file preparation only — no kernel build on Actions, no boot, no
+image write and no phone action:
+
+- `xnu/patches/0126-dreamlte-hakios-mali.patch` adds an opt-in `mali=N`
+  driver and `HakiosMali` service, default off, with no PMIC/ACPM write.
+  `mali=9` starts the service; it must never be combined with `s8gpu=4`,
+  `s8metal=1`, `sweetfb_gpu=1` or `/dev/s8mali`.
+- `tools/mkadt_dreamlte.py --gpu-node` emits a descriptive Mali node only
+  when asked; `make-boot.sh` asks only for a non-zero `mali=` argument.
+- `tools/gpu-bringup/` holds the Mesa 25.0.7 / EAGL sources, WSL build
+  scripts and `docs/README.md`. Local checks were patch application, C/C++
+  syntax with stubs, the VA allocator test and ADT parse only.
+
 ## Next
 
 1. CI kernel build; first boot target: loader log + XNU entry marker, then the
    early XNU console on the S8 screen.
 2. UFS driver for the root filesystem (USERDATA), then the iPhone X root.
+3. On an explicitly authorised trial only: staged `mali=1/3/4` checks before
+   any reset or job, then `mali=9` with `DRIVERS=softpipe` before Panfrost.

@@ -14,6 +14,9 @@ board facts with the S8's (live DT and /proc/iomem read from TWRP):
     logical 4-7 = Mongoose M2 MPIDR 0-3; cpus=N still selects a prefix
   - S-Boot framebuffer 1440x2960 XRGB8888 at 0xcc000000
   - no eMMC node: the A5 eMMC driver must not touch S8 MMIO
+  - --gpu-node: an optional Mali-G71 node; the kernel driver is still off
+    unless boot-arg mali=N is given, and make-boot.sh adds this node only
+    for a non-zero mali= argument
 The identity stays the donor's iPhone X (D22AP): the S8 has no Home key.
 """
 import argparse
@@ -54,6 +57,13 @@ RAM_BANKS = (
 
 FB_PHYS, FB_W, FB_H = 0xcc000000, 1440, 2960
 TIMEBASE = 26000000
+
+# Verified on the zealous-planck S8 branch (boots 36-49). Present for future
+# drivers only: bsd/dev/hakios.mali.c reads these addresses directly and stays
+# inert unless boot-arg mali=N is given.
+GPU_PHYS, GPU_SIZE = 0x13900000, 0x5000
+CMU_G3D_PHYS, CMU_G3D_SIZE = 0x13800000, 0x3000
+PMU_G3D_PHYS, PMU_G3D_SIZE = 0x16480000, 0x5000
 
 
 def set_prop(node, name, value):
@@ -97,7 +107,21 @@ def cpu_node(logical):
     ]
 
 
-def build(canvas=(FB_W, FB_H)):
+def gpu_node():
+    return mkadt.node('mali', [
+        ('device_type', mkadt.cstr('gpu')),
+        ('compatible', mkadt.cstr('samsung,exynos8895-mali') + mkadt.cstr('arm,mali-g71')),
+        # No interrupt is claimed: the S8 evidence is register polling only.
+        ('reg', mkadt.u64(GPU_PHYS, GPU_SIZE,
+                          CMU_G3D_PHYS, CMU_G3D_SIZE,
+                          PMU_G3D_PHYS, PMU_G3D_SIZE)),
+        ('reg-names', mkadt.cstr('gpu') + mkadt.cstr('cmu-g3d') + mkadt.cstr('pmu-g3d')),
+        ('status', mkadt.cstr('okay')),
+        ('boot-arg', mkadt.cstr('mali=N')),
+    ])
+
+
+def build(canvas=(FB_W, FB_H), gpu=False):
     root = mkadt.build(seed=os.urandom(64), qemu=True)
     # The kernel's SweetPlatformExpert personality matches 'samsung,a5xelte'
     # (KernelConfigTables.cpp); without it IOKit panics "Unable to find driver
@@ -132,6 +156,8 @@ def build(canvas=(FB_W, FB_H)):
         ('virtual-timer-intid', mkadt.u32(30)),
         ('reg', mkadt.u64(0x0201000, 0x1000, 0x0202000, 0x1000)),
     ]))
+    if gpu:
+        arm_io.children.append(gpu_node())
     arm_io.children.append(mkadt.node('disp0', [
         ('device_type', mkadt.cstr('display-subsystem')),
         # AppleCLCD (SweetFramebuffer.cpp) matches 'samsung,a5xelte-display';
@@ -166,7 +192,9 @@ if __name__ == '__main__':
     parser.add_argument('output', type=Path)
     parser.add_argument('--canvas', default=f'{FB_W}x{FB_H}',
                         help='display size presented to iOS, WxH')
+    parser.add_argument('--gpu-node', action='store_true',
+                        help='include the Mali-G71 node (the kernel still needs mali=N)')
     args = parser.parse_args()
-    blob = adt.serialize(build(tuple(int(v) for v in args.canvas.split('x'))))
+    blob = adt.serialize(build(tuple(int(v) for v in args.canvas.split('x')), gpu=args.gpu_node))
     args.output.write_bytes(blob)
     print(f'{args.output}: {len(blob)} bytes')
