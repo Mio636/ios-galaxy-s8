@@ -1,0 +1,23 @@
+#!/bin/bash
+# clang wrapper for cross-building XNU and Mesa on Linux:
+#  - forces an Apple Mach-O target (stock Linux clang defaults to ELF)
+#  - drops flags only Apple's clang understands
+#  - uses the cctools ld64 when a Mach-O link is needed
+# Override the real compiler with XNU_CLANG_CC / XNU_CLANG_CXX and the linker with LD64.
+HB="$(cd "$(dirname "$0")" && pwd)"
+case "${XNU_CLANG_DRIVER:-$(basename "$0")}" in
+  *++) drv=${XNU_CLANG_CXX:-/usr/bin/clang++}; extra=(-fno-use-cxa-atexit);;
+  *)   drv=${XNU_CLANG_CC:-/usr/bin/clang};    extra=();;
+esac
+args=()
+for a in "$@"; do
+  case "$a" in
+    -enable-trivial-auto-var-init-zero-knowing-it-will-be-removed-from-clang) ;;
+    -fapple-kext-vtable-verify|-Wno-vla-cxx-extension) ;;
+    -Werror|-Werror=*|-Weverything|-pedantic-errors) ;;
+    *) args+=("$a");;
+  esac
+done
+exec "$drv" -include "$HB/../include/xnu_clang_compat.h" \
+  -target arm64-apple-ios${XNU_SDK_VERSION:-16.7} --ld-path="${LD64:-$HB/ld64}" \
+  -w "${extra[@]}" "${args[@]}"

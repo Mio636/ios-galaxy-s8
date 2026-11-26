@@ -1,0 +1,6 @@
+#!/bin/bash
+# C++ spelling of tools/gpu-bringup/toolchain/bin/xnu-clang. The driver is
+# selected by XNU_CLANG_DRIVER so that the shared wrapper does not turn back
+# into plain clang when it is invoked under this name.
+here=$(cd "$(dirname "$0")" && pwd)
+exec env XNU_CLANG_DRIVER=clang++ "$here/xnu-clang" "$@"

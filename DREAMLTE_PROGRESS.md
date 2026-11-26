@@ -34,6 +34,13 @@ the bare-metal `s8-probe` (v2–v7) booted from BOOT:
   `tools/dreamlte/apply-dreamlte.py`): S8 framebuffer/marker/boot-MPIDR macros
   in `A5XELTE.h`, used by the early console, the AppleCLCD bridge and SweetCPU;
   A5 GPIO keys off by default. The MACHINE_CONFIG stays `A5XELTE`.
+- `0124` now also does the Mongoose M2 (logical 4-7, MPIDR 0-3) cluster0 power
+  sequence measured by `shim/dreamlte/smp_probe.c`: CPU_QCH and CLKSTOP with
+  status waits, DD4, the CPU sequencer option, then per-core DDn and the PMU
+  `0 -> 0xF` edge around PSCI CPU_ON. It also fixes the stale `#if defined(SWEET)`
+  context in `0125`. In a fresh replay tree, `0124`, `0125` and `0126` all pass
+  plain `git apply --check`. This is a patch/build result: `cpus=8` has not yet
+  been booted with this sequence.
 - Several A5 patches were zero-context, had a stray `xnu/` prefix or wrong hunk
   counts, so `git apply` (the CI path) skipped them. They were regenerated with
   context from a locally replayed tree (`tools/dreamlte/prep-xnu-tree.sh`,
@@ -90,8 +97,51 @@ to the pmsg zone and read from TWRP as `/sys/fs/pstore/pmsg-ramoops-0`.
   SwapBegin never completed. **Boot 19 (`sweetfb_native=1`, 1440x2960): iOS
   lock screen on the Galaxy S8**, one CPU, CPU rendering, ~15 min to reach it.
 
+## GPU evidence inherited from `origin/claude/zealous-planck-oi3hse`
+
+These are records from that branch's boots, **not** a boot of `gpu-bringup`
+and not re-verified during this preparation:
+
+- Boot 36: `GPU_ID=0x60a00001`, `SHADER_PRESENT=0x17771777`; GPU at
+  `0x13900000`, CMU_G3D at `0x13800000`, PMU G3D config/status `0x40e0/0x40e4`.
+- Boots 37/38: a polled `WRITE_VALUE` job (`0xcafebabe`) and a draw worked;
+  boot 46 worked through the user path; boot 49 showed CoreAnimation running
+  on the Mali device but skipping its draws.
+- No GPU GIC SPI was found; that path used register polling.
+
+## GPU/GLES preparation on `gpu-bringup` (2026-11-26)
+
+Build and file preparation only — no kernel build on Actions, no boot, no
+image write and no phone action:
+
+- `xnu/patches/0126-dreamlte-hakios-mali.patch` adds an opt-in `mali=N`
+  driver and `HakiosMali` service, default off, with no PMIC/ACPM write.
+  `mali=9` starts the service; it must never be combined with `s8gpu=4`,
+  `s8metal=1`, `sweetfb_gpu=1` or `/dev/s8mali`.
+- `tools/mkadt_dreamlte.py --gpu-node` emits a descriptive Mali node only
+  when asked; `make-boot.sh` asks only for a non-zero `mali=` argument.
+- `tools/gpu-bringup/` holds the Mesa 25.0.7 / EAGL sources, WSL build
+  scripts and `docs/README.md`. Local checks were patch application, C/C++
+  syntax with stubs, the VA allocator test and ADT parse only.
+- WSL cross tools were installed and a local iPhoneOS 16.5 SDK / cctools were
+  fetched outside git; `preflight-wsl.sh` passes. `panfrost-darwin.patch` was
+  regenerated against pristine Mesa 25.0.7 so the Panfrost-only build no
+  longer depends on the S9 donor's Freedreno patch contexts.
+- `DRIVERS=softpipe,panfrost build-mesa.sh` built `libOSMesa.8.dylib`
+  (14,833,364 bytes, 1,296 exported `gl*` functions).
+  `build-userland.sh` built `libhakios.gl.dylib` (543,344 bytes) and `gl_test`
+  (68,792 bytes). Verification with `file`, `llvm-nm -gU`, `otool -D` and
+  `otool -L` confirmed Mach-O arm64, both install names under `/redwood/lib`,
+  and the dependency from `libhakios.gl.dylib` to
+  `/redwood/lib/libOSMesa.8.dylib`.
+
+This is still build and file preparation only: no XNU CI build, no boot, no
+root injection, no boot image rebuild, no flash and no phone action.
+
 ## Next
 
 1. CI kernel build; first boot target: loader log + XNU entry marker, then the
    early XNU console on the S8 screen.
 2. UFS driver for the root filesystem (USERDATA), then the iPhone X root.
+3. On an explicitly authorised trial only: staged `mali=1/3/4` checks before
+   any reset or job, then `mali=9` with `DRIVERS=softpipe` before Panfrost.
