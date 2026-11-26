@@ -139,12 +139,15 @@ void display_probe(void (*kv)(const char *, uint64_t), void (*out)(const char *)
 	} else {
 		out("no IDMA reads 0xcc000000: no flip test\n");
 	}
-	/* Last: an IOMMU whose clock is gated could stall the bus. */
-	for (unsigned s = 0; s < 3; s++) {
+	/* Last: an IOMMU whose clock is gated could stall the bus.
+	 * On S8 Dreamlte, 0x12920000 can hang when its clock/power domain is off;
+	 * skip it to avoid stalling before JUMP TO XNU. */
+	for (unsigned s = 0; s < 2; s++) {
 		kv("sysmmu", sysmmu[s]);
 		kv("ctrl", rd(sysmmu[s] + 0x0));
 		kv("cfg", rd(sysmmu[s] + 0x4));
 		out("\n");
 	}
+	out("sysmmu 0x12920000 skipped\n");
 	out("DISPLAY probe done\n");
 }
