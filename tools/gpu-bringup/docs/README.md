@@ -127,7 +127,18 @@ run as part of this change.
   rejection and no executable buffer crossing a 16 MiB line.
 - `mkadt_dreamlte.py` compiles; with `--gpu-node` the parsed ADT contains
   `/arm-io/mali`, and without it there is no Mali node.
+- On WSL, `preflight-wsl.sh` passes with a local iPhoneOS 16.5 SDK and cctools.
+  `DRIVERS=softpipe,panfrost build-mesa.sh` built `libOSMesa.8.dylib`
+  (14,833,364 bytes, 1,296 exported `gl*` functions) and `build-userland.sh`
+  built `libhakios.gl.dylib` (543,344 bytes) and `gl_test` (68,792 bytes).
+- The outputs were checked with `file`, `llvm-nm -gU`, `otool -D` and `otool
+  -L`: all are Mach-O arm64, the install names are
+  `/redwood/lib/libOSMesa.8.dylib` and `/redwood/lib/libhakios.gl.dylib`,
+  and `libhakios.gl.dylib` links to `/redwood/lib/libOSMesa.8.dylib`.
 
-Not done: a real cross build (this WSL has no clang, meson, ninja, SDK or
-cctools yet), an XNU compile in Actions, any boot, and any phone or image
-change.
+`panfrost-darwin.patch` was adapted from the S9 donor to apply to pristine
+Mesa 25.0.7 without the donor's Freedreno patch; this build has no Freedreno
+driver or `HakiosGPU` dependency.
+
+Not done: an XNU compile in Actions, any boot, any root injection, any boot
+image rebuild, any flash, and any phone action.

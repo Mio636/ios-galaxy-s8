@@ -1,0 +1,3 @@
+# generated cross-build artifacts; sources and scripts stay tracked
+.build/
+out/

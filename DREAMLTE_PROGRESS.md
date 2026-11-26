@@ -116,6 +116,20 @@ image write and no phone action:
 - `tools/gpu-bringup/` holds the Mesa 25.0.7 / EAGL sources, WSL build
   scripts and `docs/README.md`. Local checks were patch application, C/C++
   syntax with stubs, the VA allocator test and ADT parse only.
+- WSL cross tools were installed and a local iPhoneOS 16.5 SDK / cctools were
+  fetched outside git; `preflight-wsl.sh` passes. `panfrost-darwin.patch` was
+  regenerated against pristine Mesa 25.0.7 so the Panfrost-only build no
+  longer depends on the S9 donor's Freedreno patch contexts.
+- `DRIVERS=softpipe,panfrost build-mesa.sh` built `libOSMesa.8.dylib`
+  (14,833,364 bytes, 1,296 exported `gl*` functions).
+  `build-userland.sh` built `libhakios.gl.dylib` (543,344 bytes) and `gl_test`
+  (68,792 bytes). Verification with `file`, `llvm-nm -gU`, `otool -D` and
+  `otool -L` confirmed Mach-O arm64, both install names under `/redwood/lib`,
+  and the dependency from `libhakios.gl.dylib` to
+  `/redwood/lib/libOSMesa.8.dylib`.
+
+This is still build and file preparation only: no XNU CI build, no boot, no
+root injection, no boot image rebuild, no flash and no phone action.
 
 ## Next
 
