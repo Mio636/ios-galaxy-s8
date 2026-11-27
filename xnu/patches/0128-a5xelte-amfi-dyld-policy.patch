@@ -1,0 +1,77 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: hackios <hackios@local>
+Date: Fri, 27 Nov 2026 00:00:00 +0000
+Subject: [PATCH] a5xelte: AMFI dyld policy syscall for DYLD_INSERT_LIBRARIES
+
+iOS 16 dyld queries AMFI (check dyld policy, 0x5a) before honoring
+DYLD_INSERT_LIBRARIES / DYLD_* in platform binaries. SWEET AMFI must
+answer allow-all, like willow minimac, so kern.exec_inject can load
+libhakios.inject.dylib into backboardd/SpringBoard.
+
+---
+ bsd/kern/sweet_amfi.c | 37 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
+
+diff --git a/bsd/kern/sweet_amfi.c b/bsd/kern/sweet_amfi.c
+index 1111111..2222222 100644
+--- a/bsd/kern/sweet_amfi.c
++++ b/bsd/kern/sweet_amfi.c
+@@ -18,6 +18,10 @@
+ #include <kern/cs_blobs.h>
+ #include <security/mac_framework.h>
+ #include <security/mac_policy.h>
++#include <sys/errno.h>
++#include <sys/proc.h>
++#include <sys/systm.h>
++#include <sys/uio.h>
+ 
+ #include <pexpert/arm64/board_config.h>
+ 
+@@ -258,9 +262,45 @@ sweet_amfi_vnode_check_signature(struct vnode *vp, __unused struct label *label,
+ 	return 0;
+ }
+ 
++/*
++ * dyld asks AMFI what it may do for the process it is starting (request 0x5a,
++ * "check dyld policy"): the argument is { flags in, pointer to flags out }.
++ * Everything is allowed -- DYLD_* variables, inserted libraries and
++ * interposing -- which is what lets kern.exec_inject load our library into
++ * stock daemons (DYLD_INSERT_LIBRARIES). Request 0x60 returns boot-arg state.
++ */
++#define SWEET_AMFI_SYSCALL_CHECK_DYLD_POLICY  0x5a
++#define SWEET_AMFI_DYLD_OUTPUT_ALLOW_ALL      0xffULL
++#define SWEET_AMFI_SYSCALL_QUERY_BOOTARG_STATE 0x60
++#define SWEET_AMFI_BOOTARG_STATE_NOT_ENFORCING 0x86ULL
++
++static int
++sweet_amfi_policy_syscall(__unused struct proc *p, int call, user_addr_t arg)
++{
++	struct {
++		uint64_t input_flags;
++		user_addr_t output_flags;
++	} args;
++	uint64_t flags = SWEET_AMFI_DYLD_OUTPUT_ALLOW_ALL;
++	uint64_t state = SWEET_AMFI_BOOTARG_STATE_NOT_ENFORCING;
++	int error;
++
++	if (call == SWEET_AMFI_SYSCALL_QUERY_BOOTARG_STATE) {
++		return copyout(&state, arg, sizeof(state));
++	}
++	if (call != SWEET_AMFI_SYSCALL_CHECK_DYLD_POLICY) {
++		return ENOPOLICY;
++	}
++	error = copyin(arg, &args, sizeof(args));
++	if (error == 0) {
++		error = copyout(&flags, args.output_flags, sizeof(flags));
++	}
++	return error;
++}
++
+ static const struct mac_policy_ops sweet_amfi_mac_ops = {
+ 	.mpo_vnode_check_signature = sweet_amfi_vnode_check_signature,
++	.mpo_policy_syscall = sweet_amfi_policy_syscall,
+ };
+ 
+ static struct mac_policy_conf sweet_amfi_mac_conf = {
+-- 
+2.43.0
