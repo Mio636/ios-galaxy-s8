@@ -74,7 +74,6 @@ index 1111111..2222222 100644
  };
  
  static struct mac_policy_conf sweet_amfi_mac_conf = {
--- 
 --- a/security/mac_base.c
 +++ b/security/mac_base.c
 @@ -106,5 +106,6 @@
