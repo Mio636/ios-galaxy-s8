@@ -15,7 +15,7 @@ new file mode 100644
 index 0000000..9178b84
 --- /dev/null
 +++ b/bsd/dev/hakios.mali.c
-@@ -0,0 +1,909 @@
+@@ -0,0 +1,907 @@
 +/*
 + * HakiosMali for the Galaxy S8 (dreamlte, Exynos 8895), Mali-G71 MP20.
 + *
