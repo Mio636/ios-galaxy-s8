@@ -15,7 +15,7 @@ new file mode 100644
 index 0000000..9178b84
 --- /dev/null
 +++ b/bsd/dev/hakios.mali.c
-@@ -0,0 +1,906 @@
+@@ -0,0 +1,904 @@
 +/*
 + * HakiosMali for the Galaxy S8 (dreamlte, Exynos 8895), Mali-G71 MP20.
 + *
@@ -447,11 +447,9 @@ index 0000000..9178b84
 +	}
 +	cfg = rd(pmu, PMU_G3D_CONFIGURATION);
 +	status = rd(pmu, PMU_G3D_STATUS);
-+	if ((status & G3D_ON) != G3D_ON) {
-+		LOG("step 1: read only; PD_G3D config %#x status %#x; CMU_G3D/GPU not read while off", cfg, status);
-+		return true;
-+	}
-+	LOG("step 1: read only; PD_G3D config %#x status %#x; CMU_G3D not read until powered", cfg, status);
++	/* Never touch CMU_G3D/GPU here: reading CMU while PD_G3D is off can fault. */
++	LOG("step 1: read only; PD_G3D config %#x status %#x; CMU_G3D/GPU deferred", cfg, status);
++	(void)(status & G3D_ON);
 +	return true;
 +}
 +
