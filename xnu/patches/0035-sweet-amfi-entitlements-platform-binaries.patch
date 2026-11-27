@@ -252,7 +252,8 @@
 +	if (mp != NULL && (vfs_flags(mp) & MNT_ROOTFS)) {
 +		*cs_flags |= CS_PLATFORM_BINARY;
 +	}
-+	if (cs_blob != cs_blob->csb_ro_addr && cs_blob->csb_entitlements == NULL) {
++	if (cs_blob != NULL && cs_blob != cs_blob->csb_ro_addr &&
++	    cs_blob->csb_entitlements == NULL) {
 +		sweet_amfi_attach_entitlements(cs_blob);
 +	}
 +	return 0;
