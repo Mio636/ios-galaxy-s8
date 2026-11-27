@@ -227,7 +227,7 @@
  }
  
  static const amfi_t sweet_amfi = {
-@@ -170,7 +242,52 @@
+@@ -170,7 +242,53 @@
  sweet_amfi_register(void)
  {
  	amfi_interface_register(&sweet_amfi);
