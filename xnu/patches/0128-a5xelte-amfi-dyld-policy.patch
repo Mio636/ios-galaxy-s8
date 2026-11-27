@@ -27,7 +27,7 @@ index 1111111..2222222 100644
  
  #include <pexpert/arm64/board_config.h>
  
-@@ -261,9 +265,45 @@ sweet_amfi_vnode_check_signature(struct vnode *vp, __unused struct label *label,
+@@ -264,9 +268,45 @@ sweet_amfi_vnode_check_signature(struct vnode *vp, __unused struct label *label,
  	return 0;
  }
  
