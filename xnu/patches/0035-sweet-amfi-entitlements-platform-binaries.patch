@@ -120,6 +120,9 @@
 +	void *xml = NULL;
 +	size_t xml_len = 0;
 +
++	if (code_signing_blob == NULL || code_signing_blob->csb_mem_kaddr == NULL) {
++		return;
++	}
 +	if (csblob_get_entitlements(code_signing_blob, &xml, &xml_len) != 0) {
 +		printf("SWEET AMFI: %s: entitlements do not match the code directory, granting none\n",
 +		    csblob_get_identity(code_signing_blob));
