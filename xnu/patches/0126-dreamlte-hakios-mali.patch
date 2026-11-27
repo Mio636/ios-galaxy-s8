@@ -436,7 +436,7 @@ index 0000000..9178b84
 +static bool
 +step_look(void)
 +{
-+	uint32_t pll, m, p, s;
++	uint32_t cfg, status;
 +
 +	pmu = ml_io_map(PMU_PHYS, PMU_SIZE);
 +	cmu_g3d = ml_io_map(CMU_G3D_PHYS, CMU_G3D_SIZE);
@@ -445,15 +445,14 @@ index 0000000..9178b84
 +		LOG("step 1: could not map PMU/CMU_G3D/GPU");
 +		return false;
 +	}
-+	pll = rd(cmu_g3d, PLL_CON0);
-+	m = (pll >> 16) & 0x3ff;
-+	p = (pll >> 8) & 0x3f;
-+	s = pll & 7;
-+	LOG("step 1: read only; PD_G3D config %#x status %#x, PLL_CON0 %#x (%u.%03u MHz, %s%s)",
-+	    rd(pmu, PMU_G3D_CONFIGURATION), rd(pmu, PMU_G3D_STATUS), pll,
-+	    p ? (unsigned)(26ULL * m / ((uint64_t)p << s)) : 0,
-+	    p ? (unsigned)(26000ULL * m / ((uint64_t)p << s) % 1000) : 0,
-+	    (pll & PLL_ENABLE) ? "enabled" : "disabled", (pll & PLL_STABLE) ? "" : ", NOT STABLE");
++	cfg = rd(pmu, PMU_G3D_CONFIGURATION);
++	status = rd(pmu, PMU_G3D_STATUS);
++	if ((status & G3D_ON) != G3D_ON) {
++		LOG("step 1: read only; PD_G3D config %#x status %#x; CMU_G3D/GPU not read while off", cfg, status);
++		return true;
++	}
++	LOG("step 1: read only; PD_G3D config %#x status %#x, PLL_CON0 %#x",
++	    cfg, status, rd(cmu_g3d, PLL_CON0));
 +	return true;
 +}
 +
@@ -461,12 +460,7 @@ index 0000000..9178b84
 +step_power(void)
 +{
 +	uint32_t status = rd(pmu, PMU_G3D_STATUS);
-+	uint32_t pll = rd(cmu_g3d, PLL_CON0);
 +
-+	if ((pll & (PLL_ENABLE | PLL_STABLE)) != (PLL_ENABLE | PLL_STABLE)) {
-+		LOG("step 2: PLL_G3D is not running; the boot clock is not usable, nothing written");
-+		return false;
-+	}
 +	if ((status & G3D_ON) == G3D_ON) {
 +		LOG("step 2: G3D domain already on; rail and clock left as S-Boot set them");
 +		return true;
@@ -487,6 +481,10 @@ index 0000000..9178b84
 +static bool
 +step_bus(void)
 +{
++	if ((rd(pmu, PMU_G3D_STATUS) & G3D_ON) != G3D_ON) {
++		LOG("step 3: PD_G3D is off; skipping CMU_G3D bus divider reads");
++		return false;
++	}
 +	LOG("step 3: bus dividers BUSD mux %#x BUSD %#x BUSP %#x; no SMC/DTZPC call is made",
 +	    rd(cmu_g3d, MUX_CLK_G3D_BUSD), rd(cmu_g3d, DIV_CLK_G3D_BUSD), rd(cmu_g3d, DIV_CLK_G3D_BUSP));
 +	return true;
