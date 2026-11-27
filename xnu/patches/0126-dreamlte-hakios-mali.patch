@@ -15,7 +15,7 @@ new file mode 100644
 index 0000000..9178b84
 --- /dev/null
 +++ b/bsd/dev/hakios.mali.c
-@@ -0,0 +1,904 @@
+@@ -0,0 +1,905 @@
 +/*
 + * HakiosMali for the Galaxy S8 (dreamlte, Exynos 8895), Mali-G71 MP20.
 + *
@@ -187,7 +187,7 @@ index 0000000..9178b84
 +static LCK_MTX_DECLARE(mali_job_lock, &mali_lock_group);
 +static LCK_MTX_DECLARE(mali_queue_lock, &mali_lock_group);
 +
-+static vm_offset_t pmu, cmu_g3d, mali;
++static vm_offset_t pmu, cmu_g3d, mali, cmu_g3d_div;
 +static uint32_t last_step, reached, gpu_id, shader_mask, l2_mask;
 +static uint64_t *pt_l0;
 +static uint64_t pt_l0_phys, pt_transtab;
@@ -482,8 +482,9 @@ index 0000000..9178b84
 +		LOG("step 3: PD_G3D is off; skipping CMU_G3D bus divider reads");
 +		return false;
 +	}
++	if (cmu_g3d_div == 0) cmu_g3d_div = ml_io_map(CMU_G3D_PHYS + 0x1000, 0x1000);
 +	LOG("step 3: bus dividers BUSD mux %#x BUSD %#x BUSP %#x; no SMC/DTZPC call is made",
-+	    rd(cmu_g3d, MUX_CLK_G3D_BUSD), rd(cmu_g3d, DIV_CLK_G3D_BUSD), rd(cmu_g3d, DIV_CLK_G3D_BUSP));
++	    rd(cmu_g3d, MUX_CLK_G3D_BUSD), rd(cmu_g3d_div, DIV_CLK_G3D_BUSD - 0x1000), rd(cmu_g3d_div, DIV_CLK_G3D_BUSP - 0x1000));
 +	return true;
 +}
 +
