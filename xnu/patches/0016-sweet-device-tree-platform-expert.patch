@@ -30,7 +30,7 @@ diff --git a/iokit/Kernel/arm/SweetPlatformExpert.cpp b/iokit/Kernel/arm/SweetPl
 new file mode 100644
 --- /dev/null
 +++ b/iokit/Kernel/arm/SweetPlatformExpert.cpp
-@@ -0,0 +1,110 @@
+@@ -0,0 +1,86 @@
 +/*
 + * Minimal device-tree platform expert for Redmi Note 10 Pro (sweet).
 + * Uses XNU's normal platform, power-domain and nub initialization. Hardware
@@ -42,9 +42,6 @@ new file mode 100644
 +#include <IOKit/IOPlatformExpert.h>
 +#include <IOKit/IODeviceTreeSupport.h>
 +#include <IOKit/IOLib.h>
-+#include <pexpert/pexpert.h>
-+
-+extern "C" vm_offset_t ml_io_map(vm_offset_t phys_addr, vm_size_t size);
 +
 +class SweetPlatformExpert : public IODTPlatformExpert {
 +	OSDeclareDefaultStructors(SweetPlatformExpert);
@@ -56,7 +53,6 @@ new file mode 100644
 +	const char *excludeList(void) APPLE_KEXT_OVERRIDE;
 +	bool getTargetName(char *name, int maxLength) APPLE_KEXT_OVERRIDE;
 +	bool getProductName(char *name, int maxLength) APPLE_KEXT_OVERRIDE;
-+	int haltRestart(unsigned int type) APPLE_KEXT_OVERRIDE;
 +};
 +
 +OSDefineMetaClassAndStructors(SweetPlatformExpert, IODTPlatformExpert);
@@ -71,25 +67,6 @@ new file mode 100644
 +	registerService();
 +	IOLog("SWEET: platform expert registered\n");
 +	return true;
-+}
-+
-+int
-+SweetPlatformExpert::haltRestart(unsigned int type)
-+{
-+#if defined(ARM64_BOARD_CONFIG_A5XELTE)
-+	if (type == kPEPanicRestartCPU) {
-+		IOLog("SWEET: panic restart: 10s delay for UART/TWRP\n");
-+		for (volatile uint32_t i = 0; i < 2000000000u; i++)
-+			__asm__ volatile("nop");
-+		vm_offset_t pmu = ml_io_map(0x16480000u, 0x1000u);
-+		if (pmu) {
-+			*(volatile uint32_t *)(pmu + 0x80c) = 0x12345672u;
-+			*(volatile uint32_t *)(pmu + 0x400) = 1u;
-+			__asm__ volatile("dsb sy; isb");
-+		}
-+	}
-+#endif
-+	return IODTPlatformExpert::haltRestart(type);
 +}
 +
 +const char *
