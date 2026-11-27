@@ -103,7 +103,7 @@
  }
  
  static bool
-@@ -85,60 +117,103 @@
+@@ -85,60 +117,100 @@
  	return KERN_NOT_SUPPORTED;
  }
  
@@ -120,9 +120,6 @@
 +	void *xml = NULL;
 +	size_t xml_len = 0;
 +
-+	if (code_signing_blob == NULL || code_signing_blob->csb_mem_kaddr == NULL) {
-+		return;
-+	}
 +	if (csblob_get_entitlements(code_signing_blob, &xml, &xml_len) != 0) {
 +		printf("SWEET AMFI: %s: entitlements do not match the code directory, granting none\n",
 +		    csblob_get_identity(code_signing_blob));
@@ -230,7 +227,7 @@
  }
  
  static const amfi_t sweet_amfi = {
-@@ -170,7 +242,53 @@
+@@ -170,7 +242,52 @@
  sweet_amfi_register(void)
  {
  	amfi_interface_register(&sweet_amfi);
@@ -255,8 +252,7 @@
 +	if (mp != NULL && (vfs_flags(mp) & MNT_ROOTFS)) {
 +		*cs_flags |= CS_PLATFORM_BINARY;
 +	}
-+	if (cs_blob != NULL && cs_blob != cs_blob->csb_ro_addr &&
-+	    cs_blob->csb_entitlements == NULL) {
++	if (cs_blob != cs_blob->csb_ro_addr && cs_blob->csb_entitlements == NULL) {
 +		sweet_amfi_attach_entitlements(cs_blob);
 +	}
 +	return 0;
@@ -267,7 +263,7 @@
 +};
 +
 +static struct mac_policy_conf sweet_amfi_mac_conf = {
-+	.mpc_name = "SWEET AMFI",
++	.mpc_name = "AMFI",
 +	.mpc_fullname = "SWEET built-in Mobile File Integrity",
 +	.mpc_ops = &sweet_amfi_mac_ops,
 +};
