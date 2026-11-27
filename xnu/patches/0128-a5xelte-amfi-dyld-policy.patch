@@ -16,21 +16,22 @@ diff --git a/bsd/kern/sweet_amfi.c b/bsd/kern/sweet_amfi.c
 index 1111111..2222222 100644
 --- a/bsd/kern/sweet_amfi.c
 +++ b/bsd/kern/sweet_amfi.c
-@@ -18,6 +18,10 @@
- #include <kern/cs_blobs.h>
- #include <security/mac_framework.h>
+@@ -41,6 +41,10 @@
+ #include <sys/ubc_internal.h>
+ #include <sys/vnode.h>
  #include <security/mac_policy.h>
 +#include <sys/errno.h>
 +#include <sys/proc.h>
 +#include <sys/systm.h>
 +#include <sys/uio.h>
  
- #include <pexpert/arm64/board_config.h>
- 
-@@ -264,9 +268,45 @@ sweet_amfi_vnode_check_signature(struct vnode *vp, __unused struct label *label,
+ /* iokit/Kernel/arm/SweetEntitlements.cpp */
+ void *sweet_entitlements_create(const CS_GenericBlob *blob, size_t blob_len);
+@@ -264,9 +268,46 @@ sweet_amfi_vnode_check_signature(struct vnode *vp, __unused struct label *label,
  	return 0;
  }
  
++int sweet_amfi_policy_syscall(struct proc *, int, user_addr_t);
 +/*
 + * dyld asks AMFI what it may do for the process it is starting (request 0x5a,
 + * "check dyld policy"): the argument is { flags in, pointer to flags out }.
@@ -43,7 +44,7 @@ index 1111111..2222222 100644
 +#define SWEET_AMFI_SYSCALL_QUERY_BOOTARG_STATE 0x60
 +#define SWEET_AMFI_BOOTARG_STATE_NOT_ENFORCING 0x86ULL
 +
-+static int
++int
 +sweet_amfi_policy_syscall(__unused struct proc *p, int call, user_addr_t arg)
 +{
 +	struct {
@@ -75,3 +76,22 @@ index 1111111..2222222 100644
  static struct mac_policy_conf sweet_amfi_mac_conf = {
 -- 
 2.43.0
+--- a/security/mac_base.c
++++ b/security/mac_base.c
+@@ -106,5 +106,6 @@
+ #endif
+ 
+ #include <libkern/section_keywords.h>
++extern int sweet_amfi_policy_syscall(proc_t, int, user_addr_t);
+ 
+ /*
+@@ -1617,6 +1617,9 @@
+ 	}
+ 
+ done:
++	if (error == ENOPOLICY && strcmp(target, "AMFI") == 0)
++		error = sweet_amfi_policy_syscall(p, uap->call, uap->arg);
++	}
+ 	return error;
+ }
+ 

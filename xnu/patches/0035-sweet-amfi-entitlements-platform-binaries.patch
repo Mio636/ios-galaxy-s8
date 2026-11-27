@@ -263,7 +263,7 @@
 +};
 +
 +static struct mac_policy_conf sweet_amfi_mac_conf = {
-+	.mpc_name = "AMFI",
++	.mpc_name = "SWEET AMFI",
 +	.mpc_fullname = "SWEET built-in Mobile File Integrity",
 +	.mpc_ops = &sweet_amfi_mac_ops,
 +};
