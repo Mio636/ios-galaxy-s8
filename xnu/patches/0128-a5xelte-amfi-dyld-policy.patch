@@ -27,7 +27,7 @@ index 1111111..2222222 100644
  
  /* iokit/Kernel/arm/SweetEntitlements.cpp */
  void *sweet_entitlements_create(const CS_GenericBlob *blob, size_t blob_len);
-@@ -264,9 +268,46 @@ sweet_amfi_vnode_check_signature(struct vnode *vp, __unused struct label *label,
+@@ -264,8 +268,46 @@ sweet_amfi_vnode_check_signature(struct vnode *vp, __unused struct label *label,
  	return 0;
  }
  
@@ -75,7 +75,6 @@ index 1111111..2222222 100644
  
  static struct mac_policy_conf sweet_amfi_mac_conf = {
 -- 
-2.43.0
 --- a/security/mac_base.c
 +++ b/security/mac_base.c
 @@ -106,5 +106,6 @@
