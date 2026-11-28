@@ -55,6 +55,7 @@ index 1111111..2222222 100644
 +	uint64_t state = SWEET_AMFI_BOOTARG_STATE_NOT_ENFORCING;
 +	int error;
 +
++	printf("AMFI_SYSCALL: call=0x%x\n", call);
 +	if (call == SWEET_AMFI_SYSCALL_QUERY_BOOTARG_STATE) {
 +		return copyout(&state, arg, sizeof(state));
 +	}
@@ -81,13 +82,14 @@ index 1111111..2222222 100644
 +extern int sweet_amfi_policy_syscall(proc_t, int, user_addr_t);
  
  /*
-@@ -1617,6 +1617,9 @@
- 	}
+@@ -1575,6 +1575,10 @@
+ 	if ((error = copyinstr(uap->policy, target, sizeof(target), &tmp)) != 0)
+ 		return (error);
  
- done:
-+	if (error == ENOPOLICY && strcmp(target, "AMFI") == 0) {
-+		error = sweet_amfi_policy_syscall(p, uap->call, uap->arg);
++	if (strcmp(target, "AMFI") == 0) {
++		return sweet_amfi_policy_syscall(p, uap->call, uap->arg);
 +	}
- 	return error;
- }
- 
++
+ 	error = ENOPOLICY;
+ 	for (i = 0; i < mac_policy_list.staticmax; i++) {
+ 		mpc = mac_policy_list.entries[i].mpc;
