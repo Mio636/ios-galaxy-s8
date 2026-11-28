@@ -158,15 +158,23 @@ index cb67b4d..c603161 100644
 +	return error;
 +}
 +
++static int
++sweet_amfi_vnode_find_sigs(__unused struct proc *p, __unused struct vnode *vp,
++    __unused off_t offset, __unused struct label *label)
++{
++	return 0;
++}
++
 +static const struct mac_policy_ops sweet_amfi_mac_ops = {
 +	.mpo_vnode_check_signature = sweet_amfi_vnode_check_signature,
++	.mpo_vnode_find_sigs = sweet_amfi_vnode_find_sigs,
 +	.mpo_policy_syscall = sweet_amfi_policy_syscall,
 +};
 +
  static struct mac_policy_conf sweet_amfi_mac_conf = {
 -	.mpc_name = "SWEET AMFI",
 -	.mpc_fullname = "SWEET built-in Mobile File Integrity",
-+	.mpc_name = PORT_NAME " AMFI",
++	.mpc_name = "AMFI",
 +	.mpc_fullname = PORT_NAME " built-in Mobile File Integrity",
  	.mpc_ops = &sweet_amfi_mac_ops,
  };
@@ -199,35 +207,3 @@ index 6186541..d330a8c 100644
  #include <libkern/c++/OSArray.h>
  #include <libkern/c++/OSBoolean.h>
 
-diff --git a/bsd/security/mac_base.c b/bsd/security/mac_base.c
-index 1111111..2222222 100644
---- a/bsd/security/mac_base.c
-+++ b/bsd/security/mac_base.c
-@@ -106,6 +106,7 @@
- #endif
- 
- #include <libkern/section_keywords.h>
-+extern int sweet_amfi_policy_syscall(proc_t, int, user_addr_t);
- 
- /*
-  * Policy flags for mpc_flags, which are statically set in the policy
-@@ -1570,10 +1571,14 @@
- 	char target[MAC_MAX_POLICY_NAME];
- 	int error;
- 	u_int i;
- 	size_t ulen;
- 
--	error = copyinstr(uap->policy, target, sizeof(target), &ulen);
--	if (error) {
--		return error;
-+	if ((error = copyinstr(uap->policy, target, sizeof(target), &ulen)) != 0) {
-+		return (error);
- 	}
-+
-+	if (strcmp(target, "AMFI") == 0) {
-+		return sweet_amfi_policy_syscall(p, uap->call, uap->arg);
-+	}
-+
- 	AUDIT_ARG(value32, uap->call);
- 	AUDIT_ARG(mac_string, target);
- 
