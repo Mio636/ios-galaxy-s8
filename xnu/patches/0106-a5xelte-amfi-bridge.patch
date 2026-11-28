@@ -199,10 +199,10 @@ index 6186541..d330a8c 100644
  #include <libkern/c++/OSArray.h>
  #include <libkern/c++/OSBoolean.h>
 
-diff --git a/security/mac_base.c b/security/mac_base.c
+diff --git a/bsd/security/mac_base.c b/bsd/security/mac_base.c
 index 1111111..2222222 100644
---- a/security/mac_base.c
-+++ b/security/mac_base.c
+--- a/bsd/security/mac_base.c
++++ b/bsd/security/mac_base.c
 @@ -106,6 +106,7 @@
  #endif
  
