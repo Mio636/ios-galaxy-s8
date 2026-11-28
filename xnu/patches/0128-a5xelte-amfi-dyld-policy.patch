@@ -27,7 +27,7 @@ index 1111111..2222222 100644
  
  /* iokit/Kernel/arm/SweetEntitlements.cpp */
  void *sweet_entitlements_create(const CS_GenericBlob *blob, size_t blob_len);
-@@ -311,6 +315,44 @@
+@@ -311,12 +315,51 @@
  	}
  }
  
@@ -75,10 +75,8 @@ index 1111111..2222222 100644
  };
  
  static struct mac_policy_conf sweet_amfi_mac_conf = {
--	.mpc_name = AMFI_POLICY_NAME,
+-	.mpc_name = PORT_NAME " AMFI",
 +	.mpc_name = "AMFI",
- 	.mpc_fullname = "SWEET built-in Mobile File Integrity",
+ 	.mpc_fullname = PORT_NAME " built-in Mobile File Integrity",
  	.mpc_ops = &sweet_amfi_mac_ops,
  };
--- 
-2.43.0
