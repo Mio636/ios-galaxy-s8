@@ -85,7 +85,7 @@ index cb67b4d..c603161 100644
 @@ -243,7 +249,7 @@ static void
  sweet_amfi_register(void)
  {
- 	amfi_interface_register(&sweet_amfi);
+ 	amfi_interface_register(&sweet_amfi_interface);
 -	printf("SWEET AMFI: built-in interface registered (XML entitlements)\n");
 +	printf(PORT_NAME " AMFI: built-in interface registered (XML entitlements)\n");
  }
@@ -164,6 +164,30 @@ index cb67b4d..c603161 100644
 +{
 +	return 0;
 +}
++
++/* Minimal AMFI interface so xnu-8796 entitlement acceleration sees non-NULL amfi. */
++static kern_return_t
++sweet_amfi_adjustContextWithoutMonitor(__unused void *os_entitlements,
++    __unused struct cs_blob *code_signing_blob)
++{
++	return KERN_SUCCESS;
++}
++
++static kern_return_t
++sweet_amfi_adjustContextWithMonitor(__unused void *os_entitlements,
++    __unused const CEQueryContext_t ce_ctx, __unused const void *monitor_sig_obj,
++    __unused const char *identity, __unused const uint32_t code_signing_flags)
++{
++	return KERN_SUCCESS;
++}
++
++static const amfi_t sweet_amfi_interface = {
++	.OSEntitlements = {
++		.version = OSENTITLEMENTS_INTERFACE_VERSION,
++		.adjustContextWithMonitor = sweet_amfi_adjustContextWithMonitor,
++		.adjustContextWithoutMonitor = sweet_amfi_adjustContextWithoutMonitor,
++	},
++};
 +
 +static const struct mac_policy_ops sweet_amfi_mac_ops = {
 +	.mpo_vnode_check_signature = sweet_amfi_vnode_check_signature,
