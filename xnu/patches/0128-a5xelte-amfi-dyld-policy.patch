@@ -72,8 +72,8 @@ index 1111111..2222222 100644
  	.mpo_vnode_check_signature = sweet_amfi_vnode_check_signature,
 +	.mpo_policy_syscall = sweet_amfi_policy_syscall,
  };
---- a/security/mac_base.c
-+++ b/security/mac_base.c
+--- a/bsd/security/mac_base.c
++++ b/bsd/security/mac_base.c
 @@ -106,5 +106,6 @@
  #endif
  
