@@ -8,43 +8,65 @@ DYLD_INSERT_LIBRARIES / DYLD_* in platform binaries. SWEET AMFI must
 answer allow-all, like willow minimac, so kern.exec_inject can load
 libhakios.inject.dylib into backboardd/SpringBoard.
 
----
- bsd/kern/sweet_amfi.c | 39 +++++++++++++++++++++++++++++++++++----
- 1 file changed, 35 insertions(+), 4 deletions(-)
+Register a standalone AMFI MAC policy syscall handler so 0128 does not
+collide with sweet_amfi.c patch chains.
 
-diff --git a/bsd/kern/sweet_amfi.c b/bsd/kern/sweet_amfi.c
+---
+ bsd/conf/files                 |  1 +
+ bsd/kern/bsd_init.c            |  2 ++
+ bsd/kern/sweet_amfi_syscall.c  | 62 ++++++++++++++++++++++++++++++++++
+ 3 files changed, 65 insertions(+)
+ create mode 100644 bsd/kern/sweet_amfi_syscall.c
+
+diff --git a/bsd/conf/files b/bsd/conf/files
 index 1111111..2222222 100644
---- a/bsd/kern/sweet_amfi.c
-+++ b/bsd/kern/sweet_amfi.c
-@@ -41,6 +41,10 @@
- #include <sys/ubc_internal.h>
- #include <sys/vnode.h>
- #include <security/mac_policy.h>
-+#include <sys/errno.h>
-+#include <sys/proc.h>
-+#include <sys/systm.h>
-+#include <sys/uio.h>
+--- a/bsd/conf/files
++++ b/bsd/conf/files
+@@ -533,6 +533,7 @@ bsd/kern/kern_memorystatus_policy.c	standard
+ bsd/kern/kern_crossarch.c		standard
+ bsd/kern/kern_cs.c			standard
+ bsd/kern/sweet_amfi.c			standard
++bsd/kern/sweet_amfi_syscall.c		optional config_macf
+ bsd/kern/kern_csr.c			optional config_csr
+ bsd/kern/kern_debug.c			standard
+ bsd/kern/kern_symfile.c			standard
+diff --git a/bsd/kern/bsd_init.c b/bsd/kern/bsd_init.c
+index 1111111..2222222 100644
+--- a/bsd/kern/bsd_init.c
++++ b/bsd/kern/bsd_init.c
+@@ -691,6 +691,8 @@ bsd_init(void)
+ #if defined(ARM64_BOARD_CONFIG_SWEET) || defined(ARM64_BOARD_CONFIG_A5XELTE)
+ 	/* Register the built-in AMFI interface before the first exec. */
+ 	extern void sweet_amfi_policy_register(void);
++	extern void sweet_amfi_syscall_register(void);
+ 	sweet_amfi_policy_register();
++	sweet_amfi_syscall_register();
+ #endif
  
- /* iokit/Kernel/arm/SweetEntitlements.cpp */
- void *sweet_entitlements_create(const CS_GenericBlob *blob, size_t blob_len);
-@@ -311,12 +315,51 @@
- 	}
- }
- 
-+int sweet_amfi_policy_syscall(struct proc *, int, user_addr_t);
+diff --git a/bsd/kern/sweet_amfi_syscall.c b/bsd/kern/sweet_amfi_syscall.c
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/bsd/kern/sweet_amfi_syscall.c
+@@ -0,0 +1,62 @@
 +/*
-+ * dyld asks AMFI what it may do for the process it is starting (request 0x5a,
-+ * "check dyld policy"): the argument is { flags in, pointer to flags out }.
-+ * Everything is allowed -- DYLD_* variables, inserted libraries and
-+ * interposing -- which is what lets kern.exec_inject load our library into
-+ * stock daemons (DYLD_INSERT_LIBRARIES). Request 0x60 returns boot-arg state.
++ * Standalone AMFI policy syscall for SWEET/A5XELTE bring-up.
++ * iOS 16 dyld asks AMFI (0x5a) before honoring DYLD_INSERT_LIBRARIES in
++ * platform binaries. Answer allow-all so kern.exec_inject can load our dylib.
 + */
++#include <sys/param.h>
++#include <sys/systm.h>
++#include <sys/proc.h>
++#include <sys/errno.h>
++#include <security/mac_framework.h>
++#include <security/mac_policy.h>
++
 +#define SWEET_AMFI_SYSCALL_CHECK_DYLD_POLICY  0x5a
 +#define SWEET_AMFI_DYLD_OUTPUT_ALLOW_ALL      0xffULL
 +#define SWEET_AMFI_SYSCALL_QUERY_BOOTARG_STATE 0x60
 +#define SWEET_AMFI_BOOTARG_STATE_NOT_ENFORCING 0x86ULL
 +
-+int
++static int
 +sweet_amfi_policy_syscall(__unused struct proc *p, int call, user_addr_t arg)
 +{
 +	struct {
@@ -69,14 +91,22 @@ index 1111111..2222222 100644
 +	return error;
 +}
 +
- static const struct mac_policy_ops sweet_amfi_mac_ops = {
- 	.mpo_vnode_check_signature = sweet_amfi_vnode_check_signature,
++static struct mac_policy_ops sweet_amfi_syscall_ops = {
 +	.mpo_policy_syscall = sweet_amfi_policy_syscall,
- };
- 
- static struct mac_policy_conf sweet_amfi_mac_conf = {
--	.mpc_name = PORT_NAME " AMFI",
++};
++
++static struct mac_policy_conf sweet_amfi_syscall_conf = {
 +	.mpc_name = "AMFI",
- 	.mpc_fullname = PORT_NAME " built-in Mobile File Integrity",
- 	.mpc_ops = &sweet_amfi_mac_ops,
- };
++	.mpc_fullname = "SWEET AMFI dyld policy syscall",
++	.mpc_ops = &sweet_amfi_syscall_ops,
++};
++
++static mac_policy_handle_t sweet_amfi_syscall_handle;
++
++void
++sweet_amfi_syscall_register(void)
++{
++	int error = mac_policy_register(&sweet_amfi_syscall_conf,
++	    &sweet_amfi_syscall_handle, NULL);
++	printf("AMFI_SYSCALL: registered (%d)\n", error);
++}
