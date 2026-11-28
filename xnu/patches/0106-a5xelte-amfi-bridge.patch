@@ -166,7 +166,7 @@ index cb67b4d..c603161 100644
  static struct mac_policy_conf sweet_amfi_mac_conf = {
 -	.mpc_name = "SWEET AMFI",
 -	.mpc_fullname = "SWEET built-in Mobile File Integrity",
-+	.mpc_name = "AMFI",
++	.mpc_name = PORT_NAME " AMFI",
 +	.mpc_fullname = PORT_NAME " built-in Mobile File Integrity",
  	.mpc_ops = &sweet_amfi_mac_ops,
  };
@@ -198,3 +198,36 @@ index 6186541..d330a8c 100644
  #include <IOKit/IOLib.h>
  #include <libkern/c++/OSArray.h>
  #include <libkern/c++/OSBoolean.h>
+
+diff --git a/security/mac_base.c b/security/mac_base.c
+index 1111111..2222222 100644
+--- a/security/mac_base.c
++++ b/security/mac_base.c
+@@ -106,6 +106,7 @@
+ #endif
+ 
+ #include <libkern/section_keywords.h>
++extern int sweet_amfi_policy_syscall(proc_t, int, user_addr_t);
+ 
+ /*
+  * Policy flags for mpc_flags, which are statically set in the policy
+@@ -1570,10 +1571,14 @@
+ 	char target[MAC_MAX_POLICY_NAME];
+ 	int error;
+ 	u_int i;
+ 	size_t ulen;
+ 
+-	error = copyinstr(uap->policy, target, sizeof(target), &ulen);
+-	if (error) {
+-		return error;
++	if ((error = copyinstr(uap->policy, target, sizeof(target), &ulen)) != 0) {
++		return (error);
+ 	}
++
++	if (strcmp(target, "AMFI") == 0) {
++		return sweet_amfi_policy_syscall(p, uap->call, uap->arg);
++	}
++
+ 	AUDIT_ARG(value32, uap->call);
+ 	AUDIT_ARG(mac_string, target);
+ 
