@@ -446,4 +446,19 @@ index 6186541..d330a8c 100644
  #include <IOKit/IOLib.h>
  #include <libkern/c++/OSArray.h>
  #include <libkern/c++/OSBoolean.h>
-
+diff --git a/bsd/kern/ubc_subr.c b/bsd/kern/ubc_subr.c
+index 1111111..2222222 100644
+--- a/bsd/kern/ubc_subr.c
++++ b/bsd/kern/ubc_subr.c
+@@ -4295,6 +4295,11 @@
+ accelerate_entitlement_queries(
+ 	struct cs_blob *cs_blob)
+ {
++	/*
++	 * SWEET/A5XELTE: AMFI interface is a minimal bring-up stub; skip
++	 * entitlement acceleration to avoid NULL deref in xnu-8796.
++	 */
++	return 0;
+ 	kern_return_t ret = KERN_NOT_SUPPORTED;
+ 
+ #if CODE_SIGNING_MONITOR
