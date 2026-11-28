@@ -9,8 +9,8 @@ answer allow-all, like willow minimac, so kern.exec_inject can load
 libhakios.inject.dylib into backboardd/SpringBoard.
 
 ---
- bsd/kern/sweet_amfi.c | 37 +++++++++++++++++++++++++++++++++++++
- 1 file changed, 37 insertions(+)
+ bsd/kern/sweet_amfi.c | 39 +++++++++++++++++++++++++++++++++++----
+ 1 file changed, 35 insertions(+), 4 deletions(-)
 
 diff --git a/bsd/kern/sweet_amfi.c b/bsd/kern/sweet_amfi.c
 index 1111111..2222222 100644
@@ -27,7 +27,7 @@ index 1111111..2222222 100644
  
  /* iokit/Kernel/arm/SweetEntitlements.cpp */
  void *sweet_entitlements_create(const CS_GenericBlob *blob, size_t blob_len);
-@@ -311,6 +311,44 @@
+@@ -311,6 +315,44 @@
  	}
  }
  
@@ -73,33 +73,12 @@ index 1111111..2222222 100644
  	.mpo_vnode_check_signature = sweet_amfi_vnode_check_signature,
 +	.mpo_policy_syscall = sweet_amfi_policy_syscall,
  };
---- a/bsd/security/mac_base.c
-+++ b/bsd/security/mac_base.c
-@@ -106,6 +106,7 @@
- #endif
  
- #include <libkern/section_keywords.h>
-+extern int sweet_amfi_policy_syscall(proc_t, int, user_addr_t);
- 
- /*
-  * Policy flags for mpc_flags, which are statically set in the policy
-@@ -1570,10 +1571,14 @@
- 	char target[MAC_MAX_POLICY_NAME];
- 	int error;
- 	u_int i;
- 	size_t ulen;
- 
--	error = copyinstr(uap->policy, target, sizeof(target), &ulen);
--	if (error) {
--		return error;
-+	if ((error = copyinstr(uap->policy, target, sizeof(target), &ulen)) != 0) {
-+		return (error);
- 	}
-+
-+	if (strcmp(target, "AMFI") == 0) {
-+		return sweet_amfi_policy_syscall(p, uap->call, uap->arg);
-+	}
-+
- 	AUDIT_ARG(value32, uap->call);
- 	AUDIT_ARG(mac_string, target);
- 
+ static struct mac_policy_conf sweet_amfi_mac_conf = {
+-	.mpc_name = AMFI_POLICY_NAME,
++	.mpc_name = "AMFI",
+ 	.mpc_fullname = "SWEET built-in Mobile File Integrity",
+ 	.mpc_ops = &sweet_amfi_mac_ops,
+ };
+-- 
+2.43.0
