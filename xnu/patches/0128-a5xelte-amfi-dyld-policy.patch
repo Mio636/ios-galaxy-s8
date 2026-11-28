@@ -27,8 +27,8 @@ index 1111111..2222222 100644
  
  /* iokit/Kernel/arm/SweetEntitlements.cpp */
  void *sweet_entitlements_create(const CS_GenericBlob *blob, size_t blob_len);
-@@ -264,8 +268,46 @@ sweet_amfi_vnode_check_signature(struct vnode *vp, __unused struct label *label,
- 	return 0;
+@@ -311,6 +311,44 @@
+ 	}
  }
  
 +int sweet_amfi_policy_syscall(struct proc *, int, user_addr_t);
@@ -72,8 +72,6 @@ index 1111111..2222222 100644
  	.mpo_vnode_check_signature = sweet_amfi_vnode_check_signature,
 +	.mpo_policy_syscall = sweet_amfi_policy_syscall,
  };
- 
- static struct mac_policy_conf sweet_amfi_mac_conf = {
 --- a/security/mac_base.c
 +++ b/security/mac_base.c
 @@ -106,5 +106,6 @@
@@ -87,7 +85,7 @@ index 1111111..2222222 100644
  	}
  
  done:
-+	if (error == ENOPOLICY && strcmp(target, "AMFI") == 0)
++	if (error == ENOPOLICY && strcmp(target, "AMFI") == 0) {
 +		error = sweet_amfi_policy_syscall(p, uap->call, uap->arg);
 +	}
  	return error;
