@@ -166,11 +166,51 @@ index cb67b4d..c603161 100644
 +}
 +
 +/* Minimal AMFI interface so xnu-8796 entitlement acceleration sees non-NULL amfi. */
-+static kern_return_t
-+sweet_amfi_adjustContextWithoutMonitor(__unused void *os_entitlements,
-+    __unused struct cs_blob *code_signing_blob)
++static void
++sweet_amfi_OSEntitlements_invalidate(__unused void *osentitlements)
 +{
-+	return KERN_SUCCESS;
++}
++
++static void *
++sweet_amfi_OSEntitlements_asdict(__unused void *osentitlements)
++{
++	return NULL;
++}
++
++static bool
++sweet_amfi_OSEntitlements_get_transmuted(__unused void *osentitlements, const CS_GenericBlob **blob)
++{
++	*blob = NULL;
++	return false;
++}
++
++static bool
++sweet_amfi_OSEntitlements_get_xml(__unused void *osentitlements, CS_GenericBlob **blob)
++{
++	*blob = NULL;
++	return false;
++}
++
++static bool
++sweet_amfi_get_legacy_profile_exemptions(const uint8_t **profile, size_t *profileLength)
++{
++	*profile = NULL;
++	*profileLength = 0;
++	return false;
++}
++
++static bool
++sweet_amfi_get_udid(const uint8_t **udid, size_t *udidLength)
++{
++	*udid = NULL;
++	*udidLength = 0;
++	return false;
++}
++
++static void *
++sweet_amfi_query_context_to_object(__unused CEQueryContext_t ctx)
++{
++	return NULL;
 +}
 +
 +static kern_return_t
@@ -181,11 +221,187 @@ index cb67b4d..c603161 100644
 +	return KERN_SUCCESS;
 +}
 +
++static kern_return_t
++sweet_amfi_adjustContextWithoutMonitor(__unused void *os_entitlements,
++    __unused struct cs_blob *code_signing_blob)
++{
++	return KERN_SUCCESS;
++}
++
++static kern_return_t
++sweet_amfi_queryEntitlementBoolean(__unused const void *os_entitlements,
++    __unused const char *entitlement_name)
++{
++	return KERN_NOT_FOUND;
++}
++
++static kern_return_t
++sweet_amfi_queryEntitlementBooleanWithProc(__unused const proc_t proc,
++    __unused const char *entitlement_name)
++{
++	return KERN_NOT_FOUND;
++}
++
++static kern_return_t
++sweet_amfi_queryEntitlementString(__unused const void *os_entitlements,
++    __unused const char *entitlement_name, __unused const char *entitlement_value)
++{
++	return KERN_NOT_FOUND;
++}
++
++static kern_return_t
++sweet_amfi_queryEntitlementStringWithProc(__unused const proc_t proc,
++    __unused const char *entitlement_name, __unused const char *entitlement_value)
++{
++	return KERN_NOT_FOUND;
++}
++
++static kern_return_t
++sweet_amfi_copyEntitlementAsOSObject(__unused const void *os_entitlements,
++    __unused const char *entitlement_name, void **entitlement_object)
++{
++	*entitlement_object = NULL;
++	return KERN_NOT_FOUND;
++}
++
++static kern_return_t
++sweet_amfi_copyEntitlementAsOSObjectWithProc(__unused const proc_t proc,
++    __unused const char *entitlement_name, void **entitlement_object)
++{
++	*entitlement_object = NULL;
++	return KERN_NOT_FOUND;
++}
++
++static TCReturn_t
++sweet_amfi_tc_loadModule(__unused TrustCacheRuntime_t *runtime, __unused const TCType_t type,
++    __unused TrustCache_t *trustCache, __unused const uintptr_t dataAddr, __unused const size_t dataSize)
++{
++	return buildTCRet(kTCComponentLoadModule, kTCReturnUnsupported, 0);
++}
++
++static TCReturn_t
++sweet_amfi_tc_load(__unused TrustCacheRuntime_t *runtime, __unused TCType_t type,
++    __unused TrustCache_t *trustCache, __unused const uintptr_t payloadAddr, __unused const size_t payloadSize,
++    __unused const uintptr_t manifestAddr, __unused const size_t manifestSize)
++{
++	return buildTCRet(kTCComponentLoad, kTCReturnUnsupported, 0);
++}
++
++static TCReturn_t
++sweet_amfi_tc_query(__unused const TrustCacheRuntime_t *runtime, __unused TCQueryType_t queryType,
++    __unused const uint8_t CDHash[kTCEntryHashSize], __unused TrustCacheQueryToken_t *queryToken)
++{
++	return buildTCRet(kTCComponentQuery, kTCReturnNotFound, 0);
++}
++
++static TCReturn_t
++sweet_amfi_tc_getCapabilities(__unused const TrustCache_t *trustCache, TCCapabilities_t *capabilities)
++{
++	*capabilities = 0;
++	return buildTCRet(kTCComponentModuleCapabilities, kTCReturnSuccess, 0);
++}
++
++static TCReturn_t
++sweet_amfi_tc_queryGetTCType(__unused const TrustCacheQueryToken_t *queryToken, __unused TCType_t *typeRet)
++{
++	return buildTCRet(kTCComponentQueryTCType, kTCReturnInvalidArguments, 0);
++}
++
++static TCReturn_t
++sweet_amfi_tc_queryGetCapabilities(__unused const TrustCacheQueryToken_t *queryToken,
++    __unused TCCapabilities_t *capabilities)
++{
++	return buildTCRet(kTCComponentModuleCapabilities, kTCReturnInvalidArguments, 0);
++}
++
++static TCReturn_t
++sweet_amfi_tc_queryGetHashType(__unused const TrustCacheQueryToken_t *queryToken, __unused uint8_t *hashTypeRet)
++{
++	return buildTCRet(kTCComponentQueryHashType, kTCReturnInvalidArguments, 0);
++}
++
++static TCReturn_t
++sweet_amfi_tc_queryGetFlags(__unused const TrustCacheQueryToken_t *queryToken, __unused uint64_t *flagsRet)
++{
++	return buildTCRet(kTCComponentQueryFlags, kTCReturnInvalidArguments, 0);
++}
++
++static TCReturn_t
++sweet_amfi_tc_queryGetConstraintCategory(__unused const TrustCacheQueryToken_t *queryToken,
++    __unused uint8_t *constraintCategoryRet)
++{
++	return buildTCRet(kTCComponentQueryConstraintCategory, kTCReturnInvalidArguments, 0);
++}
++
++static TCReturn_t
++sweet_amfi_tc_constructInvalid(__unused TrustCache_t *trustCache, __unused const uint8_t *moduleAddr,
++    __unused size_t moduleSize)
++{
++	return buildTCRet(kTCComponentConstructInvalid, kTCReturnUnsupported, 0);
++}
++
++static TCReturn_t
++sweet_amfi_tc_checkRuntimeForUUID(__unused const TrustCacheRuntime_t *runtime,
++    __unused const uint8_t checkUUID[kUUIDSize], __unused const TrustCache_t **trustCacheRet)
++{
++	return buildTCRet(kTCComponentCheckRuntimeForUUID, kTCReturnNotFound, 0);
++}
++
++static TCReturn_t
++sweet_amfi_tc_extractModule(__unused TrustCache_t *trustCache, __unused const uint8_t *dataAddr,
++    __unused size_t dataSize)
++{
++	return buildTCRet(kTCComponentExtractModule, kTCReturnUnsupported, 0);
++}
++
++static TCReturn_t
++sweet_amfi_tc_getModule(__unused const TrustCache_t *trustCache, __unused const uint8_t **moduleAddrRet,
++    __unused size_t *moduleSizeRet)
++{
++	return buildTCRet(kTCComponentGetModule, kTCReturnUnsupported, 0);
++}
++
++static TCReturn_t
++sweet_amfi_tc_getUUID(__unused const TrustCache_t *trustCache, __unused uint8_t returnUUID[kUUIDSize])
++{
++	return buildTCRet(kTCComponentGetUUID, kTCReturnUnsupported, 0);
++}
++
 +static const amfi_t sweet_amfi_interface = {
++	.OSEntitlements_invalidate = sweet_amfi_OSEntitlements_invalidate,
++	.OSEntitlements_asdict = sweet_amfi_OSEntitlements_asdict,
++	.OSEntitlements_get_transmuted = sweet_amfi_OSEntitlements_get_transmuted,
++	.OSEntitlements_get_xml = sweet_amfi_OSEntitlements_get_xml,
++	.get_legacy_profile_exemptions = sweet_amfi_get_legacy_profile_exemptions,
++	.get_udid = sweet_amfi_get_udid,
++	.query_context_to_object = sweet_amfi_query_context_to_object,
++	.TrustCache = {
++		.version = TRUST_CACHE_INTERFACE_VERSION,
++		.loadModule = sweet_amfi_tc_loadModule,
++		.load = sweet_amfi_tc_load,
++		.query = sweet_amfi_tc_query,
++		.getCapabilities = sweet_amfi_tc_getCapabilities,
++		.queryGetTCType = sweet_amfi_tc_queryGetTCType,
++		.queryGetCapabilities = sweet_amfi_tc_queryGetCapabilities,
++		.queryGetHashType = sweet_amfi_tc_queryGetHashType,
++		.queryGetFlags = sweet_amfi_tc_queryGetFlags,
++		.queryGetConstraintCategory = sweet_amfi_tc_queryGetConstraintCategory,
++		.constructInvalid = sweet_amfi_tc_constructInvalid,
++		.checkRuntimeForUUID = sweet_amfi_tc_checkRuntimeForUUID,
++		.extractModule = sweet_amfi_tc_extractModule,
++		.getModule = sweet_amfi_tc_getModule,
++		.getUUID = sweet_amfi_tc_getUUID,
++	},
 +	.OSEntitlements = {
 +		.version = OSENTITLEMENTS_INTERFACE_VERSION,
 +		.adjustContextWithMonitor = sweet_amfi_adjustContextWithMonitor,
 +		.adjustContextWithoutMonitor = sweet_amfi_adjustContextWithoutMonitor,
++		.queryEntitlementBoolean = sweet_amfi_queryEntitlementBoolean,
++		.queryEntitlementBooleanWithProc = sweet_amfi_queryEntitlementBooleanWithProc,
++		.queryEntitlementString = sweet_amfi_queryEntitlementString,
++		.queryEntitlementStringWithProc = sweet_amfi_queryEntitlementStringWithProc,
++		.copyEntitlementAsOSObject = sweet_amfi_copyEntitlementAsOSObject,
++		.copyEntitlementAsOSObjectWithProc = sweet_amfi_copyEntitlementAsOSObjectWithProc,
 +	},
 +};
 +
